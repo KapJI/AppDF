@@ -298,15 +298,27 @@ class GooglePlay(object):
         self._debug("load_apk", "select_apk_folder")
         
         xpath = "//section/div/div/div/div/div/div/div/button"
-        self.session.at_xpath(xpath).click()
+        button = self.session.at_xpath(xpath)
+        if not button or not button.is_visible():
+            xpath = "//section/div[2]/div/div/div[2]/h3/button"
+            button = self.session.at_xpath(xpath)
+        button.click()
         self.ensure_application_header()
         
         xpath = "//div[@class='gwt-PopupPanel']/div[@class='popupContent']/div/div/div/input"
         input_file = self.session.at_xpath(xpath)
         apk_list = self.app.apk_paths()
         self.upload_file(input_file, apk_list[0])
-        self.session.wait_for(lambda: progress.bar.get_attr("aria-hidden") == "true")
-        self._debug("upload_apk", "loading")
+        xpath = "/html/body/div[6]/div/div/div[1]/div[2]"
+        progress_bar = self.session.at_xpath(xpath)
+        self.session.wait_for(lambda: progress_bar.get_attr("aria-hidden") == "true", timeout=120)
+        xpath = "/html/body/div[6]/div/div/nav/span/div/button[1]"
+        save_button = self.session.at_xpath(xpath)
+        if save_button and save_button.is_visible():
+            print "Click Save APK"
+            save_button.click()
+        time.sleep(1)
+        self._debug("upload_apk", "loaded")
     
     def upload_file(self, file_input, file_path):
         file_input.set_attr("style", "position: absolute")
@@ -321,11 +333,10 @@ class GooglePlay(object):
             self.upload_file(image_div.at_xpath("div[1]/input"), image_path)
             self.session.wait_for(lambda: image_div.at_xpath("div[2]").get_attr("aria-hidden") == "true")
             if image_div.at_xpath("div[4]").get_attr("aria-hidden") == "false":
-                print "Fail"
                 image_div.at_xpath("div[4]/div[2]").click()
                 time.sleep(2)
+                self._debug("image_load", "failed")
             else:
-                print "Success"
                 break
 
     # Helpers

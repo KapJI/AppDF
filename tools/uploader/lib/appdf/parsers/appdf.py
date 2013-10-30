@@ -27,16 +27,16 @@ class AppDF(object):
         self.archive = None
 
     def parse(self):
-        with zipfile.ZipFile(self.file_path, "r") as archive:
-            if archive.testzip():
-                raise RuntimeError("AppDF file `{}' is broken".format(file))
+        archive = zipfile.ZipFile(self.file_path, "r")
+        if archive.testzip():
+            raise RuntimeError("AppDF file `{}' is broken".format(file))
 
-            if "description.xml" not in archive.namelist():
-                raise RuntimeError("Invalid AppDF file `{}'".format(file))
+        if "description.xml" not in archive.namelist():
+            raise RuntimeError("Invalid AppDF file `{}'".format(file))
 
-            self.archive = archive
-            self.xml = archive.read("description.xml")
-            self.obj = lxml.objectify.fromstring(self.xml)
+        self.archive = archive
+        self.xml = archive.read("description.xml")
+        self.obj = lxml.objectify.fromstring(self.xml)
     
     def validate(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -60,7 +60,7 @@ class AppDF(object):
             return ""
             
     def video(self): #optional tags
-        if hasattr(self.obj.application.description, "videos") and hasattr(self.obj.application.description, "youtube-video") and self.obj.application.description.videos["youtube-video"]:
+        if hasattr(self.obj.application.description, "videos") and hasattr(self.obj.application.description.videos, "youtube-video") and self.obj.application.description.videos["youtube-video"]:
             video_id = self.obj.application.description.videos["youtube-video"]
             url = "http://www.youtube.com/watch?v={}".format(video_id)
             return url
@@ -70,8 +70,8 @@ class AppDF(object):
     @silent_normalize
     def website(self): #required tags
         site = str(self.obj.application["customer-support"].website)
-        if re.search("http", str(site)) == None:
-            site.append("http://")
+        if re.search("http", site) == None:
+            site = "http://" + site
         return site
 
     @silent_normalize
@@ -251,4 +251,44 @@ class AppDF(object):
                         return desc.texts["keywords"]
                     else:
                         return ""
+
+    def _get_path_and_extract(self, filename):
+        self.archive.extract(filename, "tmp")
+        return os.path.join(os.getcwd(), "tmp", str(filename))
+
+    def apk_paths(self):
+        result = []
+        apk_files = self.obj.application["apk-files"]
+        for apk_file in apk_files["apk-file"]:
+            result.append(self._get_path_and_extract(apk_file))
+        return result
+
+    def app_icon_path(self):
+        app_icon_file = self.obj.application.description.images["app-icon"]
+        return self._get_path_and_extract(app_icon_file)
+
+    def large_promo_path(self):
+        if not hasattr(self.obj.application.description.images, "large-promo"):
+            return None
+        large_promo_file = self.obj.application.description.images["large-promo"]
+        return self._get_path_and_extract(large_promo_file)
+
+    def small_promo_path(self):
+        if not hasattr(self.obj.application.description.images, "small-promo"):
+            return None
+        small_promo_file = self.obj.application.description.images["small-promo"]
+        return self._get_path_and_extract(small_promo_file)
+
+    def screenshot_paths(self):
+        """ Return paths to screenshots in filesystem with best resolution """
+        indexes = dict()
+        screenshots = self.obj.application.description.images.screenshots
+        for screenshot in screenshots.screenshot:
+            index = screenshot.attrib["index"]
+            if (index in indexes) and (int(screenshot.attrib["width"]) > int(indexes[index].attrib["width"])) or not index in indexes:
+                indexes[index] = screenshot
+        result = []
+        for key, value in sorted(indexes.items()):
+            result.append(self._get_path_and_extract(value))
+        return result
 

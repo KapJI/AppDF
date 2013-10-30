@@ -1,18 +1,25 @@
+# -*- coding: utf-8 -*-
+
 import os
 import time
 import sys
-import dryscrape
+import webkit_server
+
+def fill_element(element, value):
+    if value:
+        # Funny trick for multiline string
+        element.eval_script("""
+            var valueString = function(){{/*{}*/}}.toString().slice(15,-4);
+            node.value = valueString;
+            var event = document.createEvent("HTMLEvents");
+            event.initEvent("change", true, true);
+            node.dispatchEvent(event);
+        """.format(value))
 
 def fill(elements, values):
     for i, value in enumerate(values):
         if value:
-            element = elements[i]
-            element.set(value)
-            element.eval_script("""
-                var event = document.createEvent("HTMLEvents");
-                event.initEvent("change", true, true);
-                node.dispatchEvent(event);
-            """)
+            fill_element(elements[i], value)
 
 
 class GooglePlay(object):
@@ -22,7 +29,8 @@ class GooglePlay(object):
         self.password = password
         self.debug_dir = debug_dir
 
-        self.session = dryscrape.Session()
+        self.session = webkit_server.Client()
+        self.session.set_header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36")
 
         if self.debug_dir:
             if not os.path.exists(self.debug_dir):
@@ -30,31 +38,32 @@ class GooglePlay(object):
 
     # Publication process
     def publish(self):
-        self.open_console()
+        self.session.visit("https://play.google.com/apps/publish/v2/")
+        self._debug("google play", "opened")
+
         self.login()
         
-        # assert bool(self.ensure_all_applications_header())
+        #assert bool(self.ensure_all_applications_header())
 
-        # select All applications menu
-        xpath = "//sidebar/nav/ul/li/a"
-        if self.session.at_xpath(xpath):
-            self.session.at_xpath(xpath).click()
+        # Select All applications menu
+        xpath = "//sidebar/nav/ul/li/a/div"
+        all_appications_button = self.session.at_xpath(xpath)
+        if all_appications_button:
+            all_appications_button.click()
         else:
             print "Login error"
             sys.exit(1)
         
         if self.ensure_application_listed():
             self.open_app()
-            self.add_languages()
+            self.remove_languages()
         else:
             self.create_app()
-            self.add_languages()
         
-        # assert bool(self.ensure_application_header())
-        # assert bool(self.ensure_store_listing_header())
+        self.add_languages()
 
         self.fill_store_listing()
-        #self.load_apk()
+        self.load_apk()
 
     # Checks
     def ensure_all_applications_header(self):
@@ -63,7 +72,7 @@ class GooglePlay(object):
         return self._ensure(xpath)
 
     def ensure_application_listed(self):
-        xpath = "//p[@data-column='TITLE']/span[contains(text(), '{}')]"
+        xpath = "//section/div/table/tbody/tr/td/div/a/span[contains(text(), '{}')]"
         return self._ensure(xpath.format(self.app.title()))
 
     def ensure_application_header(self):
@@ -76,8 +85,9 @@ class GooglePlay(object):
         return self._ensure(xpath)
 
     def ensure_saved_message(self):
-        xpath = "//*[normalize-space(text()) = 'Saved']"
+        #xpath = "//*[normalize-space(text()) = 'Saved']"
         # TODO Saved == Sohraneno
+        xpath = "//div[@data-notification-type='INFO' and @aria-hidden='false']"
         return self._ensure(xpath)
 
     def ensure_add_language_header(self):
@@ -88,9 +98,6 @@ class GooglePlay(object):
         return self.session.at_xpath(xpath, timeout=5)
 
     # Actions
-    def open_console(self):
-        self.session.visit("https://play.google.com/apps/publish/v2/")
-        self._debug("open_console", "opened")
 
     def login(self):
         login_url = "https://accounts.google.com/ServiceLogin"
@@ -107,7 +114,7 @@ class GooglePlay(object):
             self._debug("login", "submited")
 
     def open_app(self):
-        xpath = "//p[@data-column='TITLE']/span[contains(text(), '{}')]"
+        xpath = "//section/div/table/tbody/tr/td/div/a/span[contains(text(), '{}')]"
         self.session.at_xpath(xpath.format(self.app.title())).click()
         
         # TODO select default language
@@ -138,6 +145,23 @@ class GooglePlay(object):
         self._debug("create_app", "created")
         
     
+    def remove_languages(self):
+        # 'Manage translations' button
+        xpath = "//section/div/div/div/div/div/div[3]/button[@aria-hidden='false']"
+        if self.session.at_xpath(xpath):
+            self.session.at_xpath(xpath).click()
+            # 'Remove translations' item
+            xpath = "//section/div/div/div/div/div/div[3]/div/ul/li[2]/a"
+            self.session.at_xpath(xpath).click()
+            buttons = self.session.xpath("//section/div[3]/div[2]/div/div/div/div/button[not(@disabled) and @data-lang-code and @aria-pressed='false']")
+            for button in buttons:
+                button.click()
+            self._debug("remove_languages", "all selected")
+            # 'Remove' button
+            xpath = "//section/div[3]/div[2]/div/div/div[2]/button[2]"
+            self.session.at_xpath(xpath).click()
+
+
     def add_languages(self):
         xpath = "//section/div/div/div/div/div/button"
         self.session.at_xpath(xpath).click()
@@ -164,18 +188,30 @@ class GooglePlay(object):
         
         self._debug("add_languages", "finished")
         
-    
+    def select_language(self, lang):
+        xpath = "//button[contains(@data-lang-code, '{}')]"
+        xpath = xpath.format(lang)
+        button = self.session.at_xpath(xpath)
+        if button:
+            button.click()
+        else:
+            # Expand languages list
+            xpath = "//section/div[3]/div[2]/div[1]/div/div[1]/div[2]/button"
+            self.session.at_xpath(xpath).click()
+            # Click on language item in list
+            xpath = "//section/div[3]/div[2]/div/div/div/div[2]/div/ul[3]/li/a/span[contains(., ' {}')]"
+            xpath = xpath.format(lang)
+            #self._debug("select_language", "before click")
+            self.session.at_xpath(xpath).click()
+
     def fill_store_listing(self):
         self._debug("fill_store_listing", "start")
-        xpath = "//button[contains(@data-lang-code, 'en-US')]"
-        self.session.at_xpath(xpath).click()
+        self.select_language('en-US')
         self.fill_localization("default")
         
         if hasattr(self.app.obj.application, "description-localization"):
             for desc in self.app.obj.application["description-localization"]:
-                xpath = "//button[contains(@data-lang-code, '{}')]"
-                xpath = xpath.format(desc.attrib["language"])
-                self.session.at_xpath(xpath).click()
+                self.select_language(desc.attrib["language"])
                 self.fill_localization(desc.attrib["language"])
     
     def fill_localization(self, local):
@@ -186,38 +222,77 @@ class GooglePlay(object):
         assert len(inputs) == 7
         assert len(textareas) == 3
         assert len(selects) == 3
-
         fill(inputs, [
             self.app.title(local),
             self.app.video(),
             self.app.website(),
             self.app.email(),
             self.app.phone(),
-            self.app.privacy_policy()
+            self.app.privacy_policy_link()
         ])
-
+        # TODO features in full_description
         fill(textareas, [
             self.app.full_description(local),
             self.app.short_description(local),
             self.app.recent_changes(local)
         ])
 
-        if local=="default":
-            fill(selects, [
-                self.app.type(),
-                self.app.category(),
-                self.app.rating()
-            ])
+        if local == "default":
+            fill_element(selects[0], self.app.type())
+
+            #self.session.wait_while(lambda: selects[1].get_bool_attr("disabled"))
+            # Find category value
+            xpath = "//option[contains(text(), '{}')]"
+            xpath = xpath.format(self.app.category())
+            option = self.session.at_xpath(xpath)
+            fill_element(selects[1], option.value())
+
+            fill_element(selects[2], self.app.rating())
         
-        # TODO screenshots ???
-        
-        # self.session.at_xpath("//*[normalize-space(text()) = 'Save']").click()
+            # Upload screenshots
+            # Remove old screenshots first
+            xpath = "//section/div[3]/div[2]/div[3]/div[2]/div[1]/div/div[2]/div[1]/div[1]/div[1]/div[2]/div"
+            old_screenshots = self.session.xpath(xpath)
+            self._debug("screenshots", "start")
+            for old in old_screenshots:
+                if old.at_xpath("div[3]").get_attr("aria-hidden") == "false":
+                    old.at_xpath("div[3]/div[2]").click()
+            self._debug("screenshots", "old deleted")
+            screenshots = self.app.screenshot_paths()
+            # Dirty hack :(
+            self.upload_file(self.session.xpath(xpath)[-1].at_xpath("div[1]/input"), screenshots[0])
+
+            for screenshot in screenshots:
+                print screenshot
+                self.upload_image(self.session.xpath(xpath)[-1], screenshot)
+            self._debug("screenshots", "loaded")
+
+            # Upload app icon
+            app_icon_path = self.app.app_icon_path()
+            xpath = "//section/div[3]/div[2]/div[3]/div[2]/div[2]/div/div[2]/div/div"
+            app_icon_div = self.session.at_xpath(xpath)
+            self.upload_image(app_icon_div, app_icon_path)
+
+            # Upload large promo
+            large_promo_path = self.app.large_promo_path()
+            if large_promo_path != None:
+                xpath = "//section/div[3]/div[2]/div[3]/div[2]/div[2]/div[2]/div[2]"
+                large_promo_div = self.session.at_xpath(xpath)
+                self.upload_image(large_promo_div, large_promo_path)
+
+            # Upload small promo
+            small_promo_path = self.app.small_promo_path()
+            if small_promo_path != None:
+                xpath = "//section/div[3]/div[2]/div[3]/div[2]/div[2]/div[3]/div[2]"
+                small_promo_div = self.session.at_xpath(xpath)
+                self.upload_image(small_promo_div, small_promo_path)
+
         self.session.at_xpath("//section/h3/button").click()
-        self.ensure_saved_message()
         self._debug("fill_store_listing['"+local+"']", "saved")
+        assert self.ensure_saved_message()
 
     def load_apk(self):
-        xpath = "//sidebar/ol[@aria-hidden='false']/li/a"
+        xpath = "//sidebar/nav/ol[@aria-hidden='false']/li/a"
         self.session.at_xpath(xpath).click()
         self.ensure_application_header()
         self._debug("load_apk", "select_apk_folder")
@@ -225,16 +300,34 @@ class GooglePlay(object):
         xpath = "//section/div/div/div/div/div/div/div/button"
         self.session.at_xpath(xpath).click()
         self.ensure_application_header()
-        self._debug("load_apk", "click_apk_button")
         
-        #xpath = "//div[@class='gwt-PopupPanel']/div[@class='popupContent']/div/div/div/div/button"
-        #self.session.at_xpath(xpath).click()
-        xpath = "//div[@class='gwt-PopupPanel']/div[@class='popupContent']/div/div/div/div/button"
-        
-        # self.session.at_xpath(xpath).drag_to(self.session.at_xpath(xpath1))
-        
-        # TODO apk file ???
-        
+        xpath = "//div[@class='gwt-PopupPanel']/div[@class='popupContent']/div/div/div/input"
+        input_file = self.session.at_xpath(xpath)
+        apk_list = self.app.apk_paths()
+        self.upload_file(input_file, apk_list[0])
+        self.session.wait_for(lambda: progress.bar.get_attr("aria-hidden") == "true")
+        self._debug("upload_apk", "loading")
+    
+    def upload_file(self, file_input, file_path):
+        file_input.set_attr("style", "position: absolute")
+        file_input.set(file_path)
+
+    def upload_image(self, image_div, image_path):
+        # Delete old image if needed
+        if image_div.at_xpath("div[1]").get_attr("aria-hidden") == "true":
+            image_div.at_xpath("div[@aria-hidden='false']/div[2]").click()
+
+        for i in xrange(5):
+            self.upload_file(image_div.at_xpath("div[1]/input"), image_path)
+            self.session.wait_for(lambda: image_div.at_xpath("div[2]").get_attr("aria-hidden") == "true")
+            if image_div.at_xpath("div[4]").get_attr("aria-hidden") == "false":
+                print "Fail"
+                image_div.at_xpath("div[4]/div[2]").click()
+                time.sleep(2)
+            else:
+                print "Success"
+                break
+
     # Helpers
     def _debug(self, action, state):
         print action + " : " + state

@@ -24,7 +24,8 @@ class GooglePlay(AppDF):
         with open(categories_file, "r") as fp:
             categories = json.load(fp)
             google_category = categories[type][category][subcategory]["google"]
-            return google_category.upper().replace(" ", "_").replace("&", "AND")
+            return google_category
+            #return google_category.upper().replace(" ", "_").replace("&", "AND")
 
     def rating(self):
         rating = super(GooglePlay, self).rating()

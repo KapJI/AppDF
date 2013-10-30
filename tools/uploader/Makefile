@@ -1,12 +1,10 @@
-all: requirements dryscrape #samples
+all: requirements webkit-server-install #samples
 
 requirements:
 	pip install -r requirements.txt
 
-dryscrape:
-	git clone git://github.com/niklasb/dryscrape.git
-	pip install -r dryscrape/requirements.txt
-	cd dryscrape && python setup.py install
+webkit-server-install:
+	cd webkit-server && python setup.py install
 
 #samples:
 #	wget https://github.com/onepf/AppDF/archive/master.tar.gz

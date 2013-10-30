@@ -5,6 +5,8 @@ import time
 import sys
 import webkit_server
 
+IMAGE_LOAD_ATTEMPTS = 5
+
 def fill_element(element, value):
     if value:
         # Funny trick for multiline string
@@ -230,9 +232,10 @@ class GooglePlay(object):
             self.app.phone(),
             self.app.privacy_policy_link()
         ])
-        # TODO features in full_description
+        features = "\n".join(["* " + feature for feature in self.app.features(local)])
+        full_description = "\n".join([self.app.full_description(local), features.encode("utf-8")])
         fill(textareas, [
-            self.app.full_description(local),
+            full_description,
             self.app.short_description(local),
             self.app.recent_changes(local)
         ])
@@ -264,28 +267,36 @@ class GooglePlay(object):
 
             for screenshot in screenshots:
                 print screenshot
-                self.upload_image(self.session.xpath(xpath)[-1], screenshot)
+                for i in xrange(IMAGE_LOAD_ATTEMPTS):
+                    if self.upload_image(self.session.xpath(xpath)[-1], screenshot):
+                        break
             self._debug("screenshots", "loaded")
 
             # Upload app icon
             app_icon_path = self.app.app_icon_path()
             xpath = "//section/div[3]/div[2]/div[3]/div[2]/div[2]/div/div[2]/div/div"
             app_icon_div = self.session.at_xpath(xpath)
-            self.upload_image(app_icon_div, app_icon_path)
+            for i in xrange(IMAGE_LOAD_ATTEMPTS):
+                if self.upload_image(app_icon_div, app_icon_path):
+                    break
 
             # Upload large promo
             large_promo_path = self.app.large_promo_path()
             if large_promo_path != None:
                 xpath = "//section/div[3]/div[2]/div[3]/div[2]/div[2]/div[2]/div[2]"
                 large_promo_div = self.session.at_xpath(xpath)
-                self.upload_image(large_promo_div, large_promo_path)
+                for i in xrange(IMAGE_LOAD_ATTEMPTS):
+                    if self.upload_image(large_promo_div, large_promo_path):
+                        break
 
             # Upload small promo
             small_promo_path = self.app.small_promo_path()
             if small_promo_path != None:
                 xpath = "//section/div[3]/div[2]/div[3]/div[2]/div[2]/div[3]/div[2]"
                 small_promo_div = self.session.at_xpath(xpath)
-                self.upload_image(small_promo_div, small_promo_path)
+                for i in xrange(IMAGE_LOAD_ATTEMPTS):
+                    if self.upload_image(small_promo_div, small_promo_path):
+                        break
 
         self.session.at_xpath("//section/h3/button").click()
         self._debug("fill_store_listing['"+local+"']", "saved")
@@ -329,15 +340,12 @@ class GooglePlay(object):
         if image_div.at_xpath("div[1]").get_attr("aria-hidden") == "true":
             image_div.at_xpath("div[@aria-hidden='false']/div[2]").click()
 
-        for i in xrange(5):
-            self.upload_file(image_div.at_xpath("div[1]/input"), image_path)
-            self.session.wait_for(lambda: image_div.at_xpath("div[2]").get_attr("aria-hidden") == "true")
-            if image_div.at_xpath("div[4]").get_attr("aria-hidden") == "false":
-                image_div.at_xpath("div[4]/div[2]").click()
-                time.sleep(2)
-                self._debug("image_load", "failed")
-            else:
-                break
+        self.upload_file(image_div.at_xpath("div[1]/input"), image_path)
+        self.session.wait_for(lambda: image_div.at_xpath("div[2]").get_attr("aria-hidden") == "true")
+        if image_div.at_xpath("div[4]").get_attr("aria-hidden") == "false":
+            image_div.at_xpath("div[4]/div[2]").click()
+            return False
+        return True
 
     # Helpers
     def _debug(self, action, state):

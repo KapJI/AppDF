@@ -8,12 +8,12 @@ import re
 import sys
 
 def silent_normalize(f):
-    def decorate(self, local="default"):
+    def decorate(self, lang="default"):
         try:
-            if local=="default":
+            if lang == "default":
                 node = f(self)
             else:
-                node = f(self, local)
+                node = f(self, lang)
             return node.text.encode("utf-8")
         except AttributeError:
             return None
@@ -46,12 +46,12 @@ class AppDF(object):
         schema.assertValid(lxml.etree.fromstring(self.xml))
 
     @silent_normalize
-    def title(self, local="default"):
-        if local == "default":
+    def title(self, lang="default"):
+        if lang == "default":
             return self.obj.application.description.texts.title #required tag
         elif hasattr(self.obj.application, "description-localization"): #optional tags
             for desc in self.obj.application["description-localization"]:
-                if desc.attrib["language"] == local:
+                if desc.attrib["language"] == lang:
                     if hasattr(desc, "texts") and hasattr(desc.texts, "title"):  #optional tags
                         return desc.texts.title
                     else:
@@ -96,13 +96,13 @@ class AppDF(object):
             return ""
 
     @silent_normalize
-    def full_description(self, local="default"):
+    def full_description(self, lang="default"):
         try:
-            if local=="default": #required tag
+            if lang == "default": #required tag
                 return self.obj.application.description.texts["full-description"]
             elif hasattr(self.obj.application, "description-localization"): #optional tag
                 for desc in self.obj.application["description-localization"]:
-                    if desc.attrib["language"]==local:
+                    if desc.attrib["language"] == lang:
                         if hasattr(desc, "texts") and hasattr(desc.texts, "full-description"):
                             return desc.texts["full-description"]
                         else:
@@ -111,13 +111,13 @@ class AppDF(object):
             return ""
 
     @silent_normalize
-    def short_description(self, local="default"):
+    def short_description(self, lang="default"):
         try:
-            if local=="default": #required tag
+            if lang == "default": #required tag
                 return self.obj.application.description.texts["short-description"]
             elif hasattr(self.obj.application, "description-localization"): #optional tag
                 for desc in self.obj.application["description-localization"]:
-                    if desc.attrib["language"]==local:
+                    if desc.attrib["language"] == lang:
                         if hasattr(desc, "texts") and hasattr(desc.texts, "short-description"):
                             return desc.texts["short-description"]
                         else:
@@ -125,31 +125,31 @@ class AppDF(object):
         except AttributeError:
             return ""
 
-    def features(self, local="default"):
+    def features(self, lang="default"):
         result = []
-        if local=="default":
+        if lang == "default":
             for feature in self.obj.application.description.texts.features.feature:
                 result.append(unicode(feature))
         else:
             for desc in self.obj.application["description-localization"]:
-                if desc.attrib["language"]==local:
+                if desc.attrib["language"] == lang:
                     if hasattr(desc, "texts") and hasattr(desc.texts, "features") and hasattr(desc.texts.features, "feature"):
                         for feature in desc.texts.features.feature:
                             result.append(unicode(feature))
                     else:
                         break
         return result
-    
+
     @silent_normalize
-    def recent_changes(self, local="default"):
-        if local=="default": #optional tag
+    def recent_changes(self, lang="default"):
+        if lang == "default": #optional tag
             if hasattr(self.obj.application.description.texts, "recent-changes"):
                 return self.obj.application.description.texts["recent-changes"]
             else:
                 return ""
         elif hasattr(self.obj.application, "description-localization"): #optional tag
             for desc in self.obj.application["description-localization"]:
-                if desc.attrib["language"]==local:
+                if desc.attrib["language"] == lang:
                     if hasattr(desc, "texts") and hasattr(desc.texts, "recent-changes"):
                         return desc.texts["recent-changes"]
                     else:
@@ -243,15 +243,15 @@ class AppDF(object):
         return None
         
     @silent_normalize
-    def keywords(self, local="default"):
-        if local=="default": #optional tag
+    def keywords(self, lang="default"):
+        if lang == "default": #optional tag
             if hasattr(self.obj.application.description.texts, "keywords"):
                 return self.obj.application.description.texts["keywords"]
             else:
                 return ""
         elif hasattr(self.obj.application, "description-localization"): #optional tag
             for desc in self.obj.application["description-localization"]:
-                if desc.attrib["language"]==local:
+                if desc.attrib["language"] == lang:
                     if hasattr(desc, "texts") and hasattr(desc.texts, "keywords"):
                         return desc.texts["keywords"]
                     else:

@@ -63,7 +63,7 @@ class GooglePlay(object):
         else:
             self.create_app()
 
-        #self.fill_store_listing()
+        self.fill_store_listing()
         self.upload_apk()
         self.fill_pricing_and_distribution()
 
@@ -146,8 +146,6 @@ class GooglePlay(object):
     def open_app(self):
         xpath = "//section/div/table/tbody/tr/td/div/a/span[contains(text(), '{}')]"
         self.session.at_xpath(xpath.format(self.app.title())).click()
-        
-        # TODO select default language
         
         self.ensure_application_header()
         self._debug("open_app", "opened")

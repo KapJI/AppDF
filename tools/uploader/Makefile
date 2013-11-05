@@ -1,9 +1,9 @@
-all: requirements webkit-server-install #samples
+all: requirements webkit-server #samples
 
 requirements:
 	pip install -r requirements.txt
 
-webkit-server-install:
+webkit-server:
 	cd webkit-server && python setup.py install
 
 #samples:

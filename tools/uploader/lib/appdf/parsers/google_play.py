@@ -25,7 +25,6 @@ class GooglePlay(AppDF):
             categories = json.load(fp)
             google_category = categories[type][category][subcategory]["google"]
             return google_category
-            #return google_category.upper().replace(" ", "_").replace("&", "AND")
 
     def rating(self):
         rating = super(GooglePlay, self).rating()
@@ -38,3 +37,16 @@ class GooglePlay(AppDF):
             "17": "MATURE",
             "18": "MATURE"
         }[rating]
+
+    def availability_countries(self):
+        return self._availability_countries("google_countries.json")
+
+    def local_prices(self):
+        return self._local_prices("google_countries.json")
+
+    def google_android_content_guidelines(self):
+        return hasattr(self.obj.application.consent, "google-android-content-guidelines") and self.obj.application.consent["google-android-content-guidelines"] == "yes"
+
+    def us_export_laws(self):
+        return hasattr(self.obj.application.consent, "us-export-laws") and self.obj.application.consent["us-export-laws"] == "yes"
+

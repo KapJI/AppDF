@@ -174,20 +174,28 @@ class AppDF(object):
     def rating(self): #required tag
         return self.obj.application["content-description"]["content-rating"]
     
-    def price(self):
-        return "yes" if self.obj.application.price.attrib["free"]=="yes" else "no"
+    def paid(self):
+        return self.obj.application.price.attrib["free"] != "yes"
     
     def base_price(self):
         return self.obj.application.price["base-price"]
     
-    def local_price(self, local="default"):
+    def local_prices(self):
+        return self._local_prices("countries.json")
+
+    def _local_prices(self, filename):
+        result = []
         if hasattr(self.obj.application.price, "local-price"):
-            for local_price in self.obj.application.price["local-price"]:
-                if local_price.attrib["country"] == local:
-                    return local_price
-        return -1
+            current_dir = os.path.dirname(os.path.realpath(__file__))
+            countries_file = os.path.join(current_dir, "..", "..", "..", "spec", filename)
+            
+            with open(countries_file, "r") as fp:
+                countries_json = json.load(fp)
+                for local_price in self.obj.application.price["local-price"]:
+                    result.append([countries_json[local_price.attrib["country"]], str(local_price)])
+        return result
     
-    def countries(self):
+    def availability_type(self):
         result = []
         if hasattr(self.obj.application, "availability") and hasattr(self.obj.application.availability, "countries"):
             country = self.obj.application.availability.countries
@@ -196,14 +204,16 @@ class AppDF(object):
             else:
                 return "exclude"
         else: 
-            return ""
+            return "all"
             
-    def countries_list(self):
+    def availability_countries(self):
+        return self._availability_countries("countries.json")
+
+    def _availability_countries(self, filename):
         result = []
         if hasattr(self.obj.application, "availability") and hasattr(self.obj.application.availability, "countries"):
             current_dir = os.path.dirname(os.path.realpath(__file__))
-            countries_file = os.path.join(current_dir, "..", "..", "..", "spec",
-                                           "amazon_countries.json")
+            countries_file = os.path.join(current_dir, "..", "..", "..", "spec", filename)
             
             with open(countries_file, "r") as fp:
                 countries_json = json.load(fp)
@@ -212,14 +222,11 @@ class AppDF(object):
                     for include in country.include:
                         if include in countries_json:
                             result.append(countries_json[include])
-                    return result
                 else:
                     for exclude in country.exclude:
                         if exclude in countries_json:
                             result.append(countries_json[exclude])
-                    return result
-        else: 
-            return result
+        return result
 
     def period_since(self):
         if hasattr(self.obj.application, "availability") and hasattr(self.obj.application.availability, "period"):
@@ -251,8 +258,10 @@ class AppDF(object):
                         return ""
 
     def _get_path_and_extract(self, filename):
-        self.archive.extract(filename, "tmp")
-        return os.path.join(os.getcwd(), "tmp", str(filename))
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        tmp_dir = os.path.join(current_dir, "..", "..", "..", "tmp")
+        self.archive.extract(filename, tmp_dir)
+        return os.path.join(tmp_dir, str(filename))
 
     def apk_paths(self):
         result = []

@@ -58,19 +58,16 @@ class GooglePlay(object):
         
         if self.ensure_application_listed():
             self.open_app()
-            self.remove_languages()
         else:
             self.create_app()
-        
-        self.add_languages()
 
         self.fill_store_listing()
-        self.load_apk()
+        self.upload_apk()
+        self.fill_pricing_and_distribution()
 
     # Checks
     def ensure_all_applications_header(self):
         xpath = "//h2[normalize-space(text()) = 'All applications']"
-        # TODO All applications == VSE PRILOZHENIYA
         return self._ensure(xpath)
 
     def ensure_application_listed(self):
@@ -83,13 +80,11 @@ class GooglePlay(object):
 
     def ensure_store_listing_header(self):
         xpath = "//h3[contains(text(), 'Store Listing')]"
-        # TODO Store Listing == DANNIE DLY GOOGLE PLAY
         return self._ensure(xpath)
 
     def ensure_saved_message(self):
-        #xpath = "//*[normalize-space(text()) = 'Saved']"
-        # TODO Saved == Sohraneno
-        xpath = "//div[@data-notification-type='INFO' and @aria-hidden='false']"
+        xpath = "//*[normalize-space(text()) = 'Saved']"
+        #xpath = "//div[@data-notification-type='INFO' and @aria-hidden='false']"
         return self._ensure(xpath)
 
     def ensure_add_language_header(self):
@@ -97,7 +92,7 @@ class GooglePlay(object):
         return self._ensure(xpath)
     
     def _ensure(self, xpath):
-        return self.session.at_xpath(xpath, timeout=5)
+        return self.session.at_xpath(xpath, timeout=10)
 
     # Actions
 
@@ -208,6 +203,8 @@ class GooglePlay(object):
 
     def fill_store_listing(self):
         self._debug("fill_store_listing", "start")
+        self.remove_languages()
+        self.add_languages()
         self.select_language('en-US')
         self.fill_localization("default")
         
@@ -266,11 +263,11 @@ class GooglePlay(object):
             self.upload_file(self.session.xpath(xpath)[-1].at_xpath("div[1]/input"), screenshots[0])
 
             for screenshot in screenshots:
-                print screenshot
+                print "Uploaded:", os.path.basename(screenshot)
                 for i in xrange(IMAGE_LOAD_ATTEMPTS):
                     if self.upload_image(self.session.xpath(xpath)[-1], screenshot):
                         break
-            self._debug("screenshots", "loaded")
+            self._debug("upload_screenshots", "finished")
 
             # Upload app icon
             app_icon_path = self.app.app_icon_path()
@@ -302,11 +299,62 @@ class GooglePlay(object):
         self._debug("fill_store_listing['"+local+"']", "saved")
         assert self.ensure_saved_message()
 
-    def load_apk(self):
-        xpath = "//sidebar/nav/ol[@aria-hidden='false']/li/a"
+    def fill_pricing_and_distribution(self):
+        xpath = "//sidebar/nav/ol[2]/li[3]/a"
+        self.session.at_xpath(xpath).click()
+        if self.app.paid():
+            xpath = "//section/div[2]/div[2]/fieldset/label/div[2]/div/div/div/button[1]"
+            self.session.at_xpath(xpath).click()
+            # Select base price
+            xpath = "//section/div[2]/div[2]/fieldset/label[2]/div[2]/div/div[1]/div/label"
+            label = self.session.at_xpath(xpath)
+            base_currency = label.at_xpath("span[1]").text()
+            if base_currency == "USD":
+                label.at_xpath("input").set(self.app.base_price())
+                # Auto-convert prices
+                xpath = "//section/div[2]/div[2]/fieldset/label[3]/div[2]/button"
+                self.session.at_xpath(xpath).click()
+                # Sel manual prices
+                local_prices = self.app.local_prices()
+                for local_price in local_prices:
+                    xpath = "//section/div[2]/div[3]/div/div[1]/div/div/div[3]/div/div[2]/div/div/table/tbody/tr/td[1]/div/label[contains(text(),'{}')]"
+                    xpath = xpath.format(local_price[0])
+                    country_row = self.session.at_xpath(xpath).at_xpath("../../..")
+                    price_input = country_row.at_xpath("td[2]/div/label/input")
+                    if price_input:
+                        price_input.set(local_price[1])
+        else:
+            xpath = "//section/div[2]/div[2]/fieldset/label/div[2]/div/div/div/button[2]"
+            self.session.at_xpath(xpath).click()
+        availability_type = self.app.availability_type()
+        if availability_type == "all" or availability_type == "exclude":
+            xpath = "//section/div[2]/div[3]/div/div/div/div/div/div[3]/table/thead/tr/th/label/input"
+            self.session.at_xpath(xpath).set("false")
+            self.session.at_xpath(xpath).set("true")
+        countries_list = self.app.availability_countries()
+        if availability_type == "include" or availability_type == "exclude":
+            for country in countries_list:
+                xpath = "//section/div[2]/div[3]/div/div[1]/div/div/div[3]/div/div[2]/div/div/table/tbody/tr/td[1]/div/label[contains(text(),'{}')]"
+                xpath = xpath.format(country)
+                label = self.session.at_xpath(xpath)
+                if label.get_attr("data-country-checkbox") == "blocked":
+                    print country, "blocked, skip"
+                else:
+                    label.at_xpath("input").set("true" if availability_type == "include" else "false")
+        if self.app.google_android_content_guidelines():
+            xpath = "//section/div[2]/div[5]/fieldset/label[2]/div[2]/div/div/span/input"
+            self.session.at_xpath(xpath).click()
+        if self.app.us_export_laws():
+            xpath = "//section/div[2]/div[5]/fieldset/label[3]/div[2]/div/span/input"
+            self.session.at_xpath(xpath).click()
+        self.session.at_xpath("//section/h3/button").click()
+        self._debug("fill_pricing_and_distribution", "saved")
+        assert self.ensure_saved_message()
+
+    def upload_apk(self):
+        xpath = "//sidebar/nav/ol[2]/li[1]/a"
         self.session.at_xpath(xpath).click()
         self.ensure_application_header()
-        self._debug("load_apk", "select_apk_folder")
         
         xpath = "//section/div/div/div/div/div/div/div/button"
         button = self.session.at_xpath(xpath)
@@ -326,10 +374,9 @@ class GooglePlay(object):
         xpath = "/html/body/div[6]/div/div/nav/span/div/button[1]"
         save_button = self.session.at_xpath(xpath)
         if save_button and save_button.is_visible():
-            print "Click Save APK"
             save_button.click()
         time.sleep(1)
-        self._debug("upload_apk", "loaded")
+        self._debug("upload_apk", "finished")
     
     def upload_file(self, file_input, file_path):
         file_input.set_attr("style", "position: absolute")
@@ -341,7 +388,7 @@ class GooglePlay(object):
             image_div.at_xpath("div[@aria-hidden='false']/div[2]").click()
 
         self.upload_file(image_div.at_xpath("div[1]/input"), image_path)
-        self.session.wait_for(lambda: image_div.at_xpath("div[2]").get_attr("aria-hidden") == "true")
+        self.session.wait_for(lambda: image_div.at_xpath("div[2]").get_attr("aria-hidden") == "true", timeout=60)
         if image_div.at_xpath("div[4]").get_attr("aria-hidden") == "false":
             image_div.at_xpath("div[4]/div[2]").click()
             return False

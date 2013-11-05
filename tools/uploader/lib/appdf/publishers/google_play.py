@@ -40,8 +40,10 @@ class GooglePlay(object):
 
     # Publication process
     def publish(self):
+        self.store_locale()
+
         self.session.visit("https://play.google.com/apps/publish/v2/")
-        self._debug("google play", "opened")
+        self._debug("developer_console", "opened")
 
         self.login()
         
@@ -61,9 +63,11 @@ class GooglePlay(object):
         else:
             self.create_app()
 
-        self.fill_store_listing()
+        #self.fill_store_listing()
         self.upload_apk()
         self.fill_pricing_and_distribution()
+
+        self.restore_locale()
 
     # Checks
     def ensure_all_applications_header(self):
@@ -96,18 +100,47 @@ class GooglePlay(object):
 
     # Actions
 
+    def open_account(self):
+        self.session.visit("https://accounts.google.com/ServiceLogin")
+        self._debug("account_settings", "opened")
+
+    def store_locale(self):
+        self.open_account()
+        self.login()
+        #store current language
+        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[2]/div/div/div[3]/div[2]/div/div[1]/div[1]"
+        self.locale = self.session.at_xpath(xpath).text()
+        
+        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[2]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
+        self.session.at_xpath(xpath).click()
+        
+        xpath = "//div[@role=\"dialog\"]/div[2]/div/div/div/span[contains(text(), \"English (United States)\")]"
+        self.session.at_xpath(xpath).click()
+        self._debug("locale", "changed")
+        
+    def restore_locale(self):
+        self.open_account()
+        self.login()
+        #restore previous language
+        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[2]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
+        self.session.at_xpath(xpath).click()
+        
+        xpath = "//div[@role=\"dialog\"]/div[2]/div/div/div[count(span[contains(text(), \"{}\")])=1]".format(self.locale)
+        self.session.at_xpath(xpath).click()
+        self._debug("locale", "restored")
+
     def login(self):
         login_url = "https://accounts.google.com/ServiceLogin"
 
         if self.session.url().startswith(login_url):
             email_field = self.session.at_css("#Email")
             password_field = self.session.at_css("#Passwd")
-            email_field.set(self.username)
+            if email_field.get_attr("class") != "hidden":
+                email_field.set(self.username)
             password_field.set(self.password)
             self._debug("login", "filled")
             
             email_field.form().submit()
-            self.ensure_all_applications_header()
             self._debug("login", "submited")
 
     def open_app(self):

@@ -207,7 +207,7 @@ class GooglePlay(object):
                     self.session.at_xpath(xpath).click()
                     # self._debug("add_languages", desc.attrib["language"])
                 
-            if new_lang == False:
+            if not new_lang:
                 xpath = "//div[@class='popupContent']//footer/button[last()]"
                 self.session.at_xpath(xpath).click()
             else:

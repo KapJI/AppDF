@@ -195,7 +195,7 @@ class GooglePlay(object):
         self.session.at_xpath(xpath).click()
         self.ensure_application_header()
         self._debug("add_languages", "popup_opened")
-        new_local = 0
+        new_lang = False
         
         if hasattr(self.app.obj.application, "description-localization"):
             for desc in self.app.obj.application["description-localization"]:
@@ -203,11 +203,11 @@ class GooglePlay(object):
                 xpath = xpath.format(desc.attrib["language"])
                 
                 if self.session.at_xpath(xpath) != None:
-                    new_local = 1
+                    new_lang = True
                     self.session.at_xpath(xpath).click()
                     # self._debug("add_languages", desc.attrib["language"])
                 
-            if new_local == 0:
+            if new_lang == False:
                 xpath = "//div[@class='popupContent']//footer/button[last()]"
                 self.session.at_xpath(xpath).click()
             else:
@@ -244,7 +244,7 @@ class GooglePlay(object):
                 self.select_language(desc.attrib["language"])
                 self.fill_localization(desc.attrib["language"])
     
-    def fill_localization(self, local):
+    def fill_localization(self, lang):
         inputs = self.session.css("fieldset input")
         textareas = self.session.css("fieldset textarea")
         selects = self.session.css("fieldset select")
@@ -253,22 +253,20 @@ class GooglePlay(object):
         assert len(textareas) == 3
         assert len(selects) == 3
         fill(inputs, [
-            self.app.title(local),
+            self.app.title(lang),
             self.app.video(),
             self.app.website(),
             self.app.email(),
             self.app.phone(),
             self.app.privacy_policy_link()
         ])
-        features = "\n".join(["* " + feature for feature in self.app.features(local)])
-        full_description = "\n".join([self.app.full_description(local), features.encode("utf-8")])
         fill(textareas, [
-            full_description,
-            self.app.short_description(local),
-            self.app.recent_changes(local)
+            self.app.full_description(lang),
+            self.app.short_description(lang),
+            self.app.recent_changes(lang)
         ])
 
-        if local == "default":
+        if lang == "default":
             fill_element(selects[0], self.app.type())
 
             #self.session.wait_while(lambda: selects[1].get_bool_attr("disabled"))
@@ -327,7 +325,7 @@ class GooglePlay(object):
                         break
 
         self.session.at_xpath("//section/h3/button").click()
-        self._debug("fill_store_listing['"+local+"']", "saved")
+        self._debug("fill_store_listing['"+lang+"']", "saved")
         assert self.ensure_saved_message()
 
     def fill_pricing_and_distribution(self):

@@ -95,16 +95,47 @@ class AppDF(object):
         else:
             return ""
 
-    @silent_normalize
+    def _inner_xml(self, node):
+        xml = lxml.etree.tostring(node, xml_declaration=False, encoding=unicode)
+
+        # tag name without namespace
+        tag_name = node.tag.rsplit('}', 1)[-1]
+
+        # remove opening tag
+        start = re.compile('<{0}[^<]*?>'.format(tag_name), flags=re.DOTALL)
+        xml = start.sub('', xml)
+
+        # remove closing tag
+        end = re.compile('</{0}>'.format(tag_name), flags=re.DOTALL)
+        last_match = None
+        for last_match in end.finditer(xml):
+            pass
+        xml = xml[:last_match.start()] + xml[last_match.end():]
+        xml = xml.strip()
+
+        return xml
+
+    def _process_full_description(self, tag):
+        result = self._inner_xml(tag)
+        for tag in ['features', 'i', 'b']:
+            result = result.replace('<{}>'.format(tag), '')
+            result = result.replace('</{}>'.format(tag), '')
+        result = result.replace('<ul>', '\n')
+        result = result.replace('</ul>', '')
+        result = result.replace('<li>', '* ')
+        result = result.replace('</li>', '\n')
+        result = re.sub('<a href="(.*)">.*</a>', r'(\1)', result)
+        return result.encode("utf-8")
+
     def full_description(self, lang="default"):
         try:
             if lang == "default": #required tag
-                return self.obj.application.description.texts["full-description"]
+                return self._process_full_description(self.obj.application.description.texts["full-description"])
             elif hasattr(self.obj.application, "description-localization"): #optional tag
                 for desc in self.obj.application["description-localization"]:
                     if desc.attrib["language"] == lang:
                         if hasattr(desc, "texts") and hasattr(desc.texts, "full-description"):
-                            return desc.texts["full-description"]
+                            return self._process_full_description(desc.texts["full-description"])
                         else:
                             return ""
         except AttributeError:

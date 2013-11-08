@@ -37,6 +37,7 @@ class Amazon(AppDF):
         categories_file = os.path.join(current_dir, "..", "..", "..", "spec",
                                        "store_categories.json")
         
+        amazon_category = ""
         with open(categories_file, "r") as fp:
             categories = json.load(fp)
             if subcategory == None:
@@ -44,7 +45,7 @@ class Amazon(AppDF):
             else:
                 amazon_category = self.replace(categories[type][category][subcategory]["amazon"])
             
-            return amazon_category.split("/")[1] if len(amazon_category.split("/")) == 2 else ""
+        return amazon_category.split("/")[1] if len(amazon_category.split("/")) == 2 else ""
     
     def replace(self, category):
         category = re.sub("(\s*/\s*)", "/", category)
@@ -65,7 +66,13 @@ class Amazon(AppDF):
                                        "amazon_currency.json")
         with open(currency_file, "r") as fp:
             return json.load(fp)
-    
+  
+    def availability_countries(self):
+        return self._availability_countries("amazon_countries.json")
+
+    def local_prices(self):
+        return self._local_prices("amazon_countries.json")
+
     def include_content(self):
         content_inc = self.obj.application["content-description"]["included-activities"]
         return [
@@ -110,6 +117,7 @@ class Amazon(AppDF):
             str(real_violance),
             str(sexual_content),
         ]
+
     def exchange(self, data):
         return 0 if data == "no" else 1 if data == "light" else 2
     

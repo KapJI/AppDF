@@ -160,13 +160,13 @@ class AppDF(object):
         result = []
         if lang == "default":
             for feature in self.obj.application.description.texts.features.feature:
-                result.append(unicode(feature))
+                result.append(feature.text.encode("utf-8"))
         else:
             for desc in self.obj.application["description-localization"]:
                 if desc.attrib["language"] == lang:
                     if hasattr(desc, "texts") and hasattr(desc.texts, "features") and hasattr(desc.texts.features, "feature"):
                         for feature in desc.texts.features.feature:
-                            result.append(unicode(feature))
+                            result.append(feature.text.encode("utf-8"))
                     else:
                         break
         return result

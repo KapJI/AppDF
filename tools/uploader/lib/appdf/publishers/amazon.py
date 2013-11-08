@@ -1,21 +1,28 @@
+# -*- coding: utf-8 -*-
+
 import os
 import re
 import sys
 import time
 import json
-import dryscrape
+import webkit_server
 
+
+def fill_element(element, value):
+    if value:
+        # Funny trick for multiline string
+        element.eval_script("""
+            var valueString = function(){{/*{}*/}}.toString().slice(15,-4);
+            node.value = valueString;
+            var event = document.createEvent("HTMLEvents");
+            event.initEvent("change", true, true);
+            node.dispatchEvent(event);
+        """.format(value))
 
 def fill(elements, values):
     for i, value in enumerate(values):
         if value:
-            element = elements[i]
-            element.set(value)
-            element.eval_script("""
-                var event = document.createEvent("HTMLEvents");
-                event.initEvent("change", true, true);
-                node.dispatchEvent(event);
-            """)
+            fill_element(elements[i], value)
 
 
 class Amazon(object):
@@ -25,8 +32,8 @@ class Amazon(object):
         self.password = password
         self.debug_dir = debug_dir
 
-        self.session = dryscrape.Session()
-        self.session_sub_cat = dryscrape.Session()
+        self.session = webkit_server.Client()
+        #self.session_sub_cat = webkit_server.Client()
 
         if self.debug_dir:
             if not os.path.exists(self.debug_dir):
@@ -62,7 +69,7 @@ class Amazon(object):
     # Actions
     def open_console(self):
         self.session.visit("https://developer.amazon.com/welcome.html")
-        self._debug("open_console", "opened")
+        self._debug("developer_console", "opened")
 
     def login(self):
         xpath = "//a[@id=\"header_login_link\"]"
@@ -84,12 +91,12 @@ class Amazon(object):
     def open_application(self):
         xpath = "//span[@class=\"itemTitle\" and contains(text(), '{}')]"
         self._ensure(xpath.format(self.app.title())).click()
-        self._debug("open_application", "open")
+        self._debug("open_application", "finished")
         
     def create_application(self):
         xpath = "//a[@id=\"add_new_app_link\"]"
         self._ensure(xpath).click()
-        self._debug("create_application", "create")
+        self._debug("create_application", "finished")
         
     def fill_general_information(self):
         xpath = "//a[@id=\"header_nav_general_information_a\"]"
@@ -131,23 +138,25 @@ class Amazon(object):
         
         #subcategory selection
         if self.app.subcategory() != "":
-            subcategory = self.subcategory_load(category_value)
-            #xpath = "//select[@id=\"childCategoryList\"]/option[contains(text(), \"{}\")]"
-            #xpath = xpath.format(self.app.subcategory())
+            print 'Subcategory:', self.app.subcategory()
+            #subcategory_value = self.subcategory_value(category_value)
+            xpath = "//select[@id=\"childCategoryList\"]/option[contains(text(), \"{}\")]"
+            xpath = xpath.format(self.app.subcategory())
+            subcategory_value = self.session.at_xpath(xpath).get_attr("value")
             if self.session.at_xpath(xpath):
                 fill([
+                    self.session.at_xpath("//select[@id=\"childCategoryList\"]"),
                     self.session.at_xpath("//input[@id=\"selectedCategory\"]")
-                    #self.session.at_xpath("//select[@id=\"childCategoryList\"]")
                 ], [
-                    subcategory
-                    #subcategory_value
+                    subcategory_value,
+                    subcategory_value
                 ])
             
-        self._debug("general_info", "fill")
+        self._debug("general_info", "filled")
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
-        self._debug("general_info", "save")
+        self._debug("general_info", "saved")
         self.error_check()
         
     def fill_availability(self):
@@ -160,7 +169,7 @@ class Amazon(object):
             self._ensure(xpath).click();
         
         #countries
-        if self.app.countries()=="include":
+        if self.app.availability_type() == "include":
             self.session.at_xpath("//input[@id=\"availableWorldWide2\"]").click()
             
             #remove selection
@@ -176,7 +185,7 @@ class Amazon(object):
                 if self.session.at_xpath("//input[@id=\"" + country + "\"]"):
                     self.session.at_xpath("//input[@id=\"" + country + "\"]").click()
             
-        elif self.app.countries()=="exclude":
+        elif self.app.availability_type() == "exclude":
             self.session.at_xpath("//input[@id=\"availableWorldWide2\"]").click()
             
             #set selection
@@ -187,7 +196,7 @@ class Amazon(object):
                     self.session.at_xpath("//div[@id=\"" + selection + "\"]/label[1]/input").click()
             
             #all except
-            for country in self.app.countries_list():
+            for country in self.app.availability_countries():
                 country = country.encode("utf-8")
                 if self.session.at_xpath("//input[@id=\"" + country + "\"]"):
                     self.session.at_xpath("//input[@id=\"" + country + "\"]").click()
@@ -196,7 +205,7 @@ class Amazon(object):
             self.session.at_xpath("//input[@id=\"availableWorldWide1\"]").click()
             
         #prices
-        if self.app.price()=="yes":
+        if self.app.paid():
             self.session.at_xpath("//input[@id=\"charging-no-free-app\"]").click()
         else:
             self.session.at_xpath("//input[@id=\"charging-yes\"]").click()
@@ -211,14 +220,14 @@ class Amazon(object):
             self.session.at_xpath("//input[@id=\"pricing_custom\"]").click()
             
             currency = self.app.currency()
-            for country in currency:
-                local_price = self.app.local_price(country)
-                if local_price != -1:
-                    fill([
-                        self.session.at_xpath("//input[@id=\"" + currency[country] + "_" + country + "\"]")
-                    ],[
-                        local_price
-                    ])
+            for local_price in self.app.local_prices():
+                country = local_price[0]
+                price = local_price[1]
+                fill([
+                    self.session.at_xpath("//input[@id=\"" + currency[country] + "_" + country + "\"]")
+                ],[
+                    price
+                ])
         
         #period
         if self.app.period_since() != None:
@@ -235,11 +244,11 @@ class Amazon(object):
             self.app.free_app_of_day()
         ])
         
-        self._debug("fill_availability", "fill")
+        self._debug("fill_availability", "filled")
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
-        self._debug("fill_availability", "save")
+        self._debug("fill_availability", "saved")
         self.error_check()
         
     def fill_description(self):
@@ -264,13 +273,13 @@ class Amazon(object):
                         self.session.at_xpath(xpath).click()
                         self.form_description(language, language_json[language])
         
-    def form_description(self, local="default", localeLabel=""):
+    def form_description(self, lang="default", locale_label=""):
         xpath = "//a[@id=\"edit_button\"]"
         if self.session.at_xpath(xpath):
             self._ensure(xpath).click();
-        elif localeLabel != "":
+        elif locale_label != "":
             xpath = "//select[@id=\"locale\"]/option[contains(text(), \"{}\")]"
-            xpath = xpath.format(localeLabel)
+            xpath = xpath.format(locale_label)
             fill([
                 self.session.at_xpath("//select[@id=\"locale\"]")
             ], [
@@ -283,16 +292,16 @@ class Amazon(object):
             self.session.at_xpath("//textarea[@id=\"dpMarketingBulletsStr\"]"),
             self.session.at_xpath("//textarea[@id=\"keywordsString\"]")
         ], [
-            self.app.short_description(local),
-            self.app.full_description(local),
-            self.app.features(local),
-            self.app.keywords(local)
+            self.app.short_description(lang),
+            self.app.full_description(lang),
+            '\n'.join(self.app.features(lang)),
+            self.app.keywords(lang)
         ])
-        self._debug("description", "fill_"+local)
+        self._debug("description", "fill_"+lang)
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
-        self._debug("description", "store_"+local)
+        self._debug("description", "store_"+lang)
         self.error_check()
         
     def fill_images_multimedia(self):
@@ -309,7 +318,7 @@ class Amazon(object):
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
-        self._debug("images_multimedia", "save")
+        self._debug("images_multimedia", "saved")
         self.error_check()
         
     def fill_content_rating(self):
@@ -348,11 +357,11 @@ class Amazon(object):
             self.app.include_content()
         )
         
-        self._debug("content_rating", "fill")
+        self._debug("content_rating", "filled")
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
-        self._debug("content_rating", "save")
+        self._debug("content_rating", "saved")
         self.error_check()
         
     def fill_binary_files(self):
@@ -365,7 +374,7 @@ class Amazon(object):
             self._ensure(xpath).click();
         
         
-        self._debug("binary_files", "fill")
+        self._debug("binary_files", "filled")
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
@@ -376,37 +385,19 @@ class Amazon(object):
     def ensure_application_listed(self):
         xpath = "//span[@class=\"itemTitle\" and contains(text(), '{}')]"
         return self._ensure(xpath.format(self.app.title()))
-    
-    def subcategory_load(self, category_value):
-        self.session_sub_cat.visit("https://developer.amazon.com/welcome.html")
-        
-        xpath = "//a[@id=\"header_login_link\"]"
-        if self.session_sub_cat.at_xpath(xpath):
-            self.session_sub_cat.at_xpath(xpath).click()
-        
-        email_field = self.session_sub_cat.at_css("#ap_email")
-        self.session_sub_cat.at_css("#ap_signin_existing_radio").click()
-        password_field = self.session_sub_cat.at_css("#ap_password")
-        submit_button = self.session_sub_cat.at_css("#signInSubmit-input")
-        
-        email_field.set(self.username)
-        password_field.set(self.password)
-        fill([
-            password_field
-        ],[
-            self.password
-        ])
-        self.session_sub_cat.at_xpath("//input[@id=\"signInSubmit-input\"]").click()
-        self.session_sub_cat.visit("https://developer.amazon.com/category/" + category_value + "/list.json")
-        json_data = json.loads(self.session_sub_cat.source())
-        for value in json_data["data"]:
-            if value["name"] == self.app.subcategory():
-                return value["value"]
-        return ""
+
+    # def subcategory_value(self, category_value):
+    #     self.open_console(self.session_sub_cat)
+    #     self.login(self.session_sub_cat)
+    #     self.session_sub_cat.visit("https://developer.amazon.com/category/" + category_value + "/list.json")
+    #     json_data = json.loads(self.session_sub_cat.source())
+    #     for value in json_data["data"]:
+    #         if value["name"] == self.app.subcategory():
+    #             return value["value"]
+    #     return ""
     
     def _ensure(self, xpath):
         return self.session.at_xpath(xpath, timeout=5)
-    
         
     def error_check(self):
         if self.session.at_xpath("//p[@class=\"error\"]"):

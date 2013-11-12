@@ -304,7 +304,15 @@ class Amazon(object):
         xpath = "//a[@id=\"edit_button\"]"
         if self.session.at_xpath(xpath):
             self._ensure(xpath).click();
-        
+        self._debug("images_multimedia", "opened")
+
+        # Small application icon
+        small_icon_path = self.app.small_app_icon_path()
+        xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[1]/td[2]/div"
+        self.delete_image(self.session.at_xpath(xpath))
+        self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), small_icon_path)
+
+        # Application icon
         app_icon_path = self.app.app_icon_path()
         xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[2]/td[2]/div"
         self.delete_image(self.session.at_xpath(xpath))
@@ -315,9 +323,10 @@ class Amazon(object):
         while self.delete_image(self.session.at_xpath(xpath)):
             pass
 
-        self._debug("upload_screenshots", "deleted")
+        self._debug("old_screenshots", "deleted")
         screenshots = self.app.screenshot_paths()
         for screenshot in screenshots:
+            print "Uploaded:", os.path.basename(screenshot)
             self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), screenshot)
 
         large_promo_path = self.app.large_promo_path()

@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import os
 import json
 import re
+import numpy
+from PIL import Image
 from appdf.parsers import AppDF
 
 
@@ -132,6 +134,21 @@ class Amazon(AppDF):
             "17": "MATURE",
             "18": "MATURE"
         }[rating]
+
+    def small_app_icon_path(self):
+        app_icon_path = self.app_icon_path()
+        img = Image.open(app_icon_path)
+        # Pretty PNG with transparency downsize
+        premult = numpy.fromstring(img.tostring(), dtype=numpy.uint8)
+        alpha_layer = premult[3::4] / 255.0
+        premult[::4] *= alpha_layer
+        premult[1::4] *= alpha_layer
+        premult[2::4] *= alpha_layer
+        img = Image.fromstring("RGBA", img.size, premult.tostring())
+        path = os.path.join(os.path.dirname(app_icon_path), "small_icon.png")
+        img.resize((114, 114), Image.ANTIALIAS).save(path)
+        return path
+
 
         
         

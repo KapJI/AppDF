@@ -33,7 +33,6 @@ class Amazon(object):
         self.debug_dir = debug_dir
 
         self.session = webkit_server.Client()
-        #self.session_sub_cat = webkit_server.Client()
 
         if self.debug_dir:
             if not os.path.exists(self.debug_dir):
@@ -48,22 +47,15 @@ class Amazon(object):
         
         if self.ensure_application_listed():
             self.open_application()
-            self.fill_general_information()
-            self.fill_availability()
-            self.fill_description()
-            self.fill_content_rating()
-            
-            #self.fill_images_multimedia()
-            #self.fill_binary_files()
         else:
             self.create_application()
-            self.fill_general_information()
-            self.fill_availability()
-            self.fill_description()
-            self.fill_content_rating()
-            
-            #self.fill_images_multimedia()
-            #self.fill_binary_files()
+        self.fill_general_information()
+        #self.fill_availability()
+        #self.fill_description()
+        #self.fill_content_rating()
+        
+        self.fill_images_multimedia()
+        #self.fill_binary_files()
             
         
     # Actions
@@ -313,8 +305,28 @@ class Amazon(object):
         if self.session.at_xpath(xpath):
             self._ensure(xpath).click();
         
-        
-        self._debug("images_multimedia", "fill")
+        app_icon_path = self.app.app_icon_path()
+        xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[2]/td[2]/div"
+        self.delete_image(self.session.at_xpath(xpath))
+        self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), app_icon_path)
+
+        # Delete old screenshot
+        xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[3]/td[2]"
+        while self.delete_image(self.session.at_xpath(xpath)):
+            pass
+
+        self._debug("upload_screenshots", "deleted")
+        screenshots = self.app.screenshot_paths()
+        for screenshot in screenshots:
+            self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), screenshot)
+
+        large_promo_path = self.app.large_promo_path()
+        if large_promo_path:
+            xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[4]/td[2]/div"
+            self.delete_image(self.session.at_xpath(xpath))
+            self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), large_promo_path)
+
+        self._debug("images_multimedia", "filled")
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
@@ -380,21 +392,23 @@ class Amazon(object):
         self.session.at_xpath(xpath).click();
         self._debug("binary_files", "save")
         self.error_check()
-        
+    
+    def delete_image(self, image_div):
+        delete_button = image_div.at_xpath("div/div/a[contains(@class, 'remove')]")
+        if delete_button:
+            delete_button.click()
+            self.session.at_xpath("//input[@id='floatingconfirm-ok']").click()
+            return True
+        return False
+
+    def upload_image(self, image_div, image_path):
+        image_div.set_attr("class", "")
+        image_div.at_xpath("div/input").set(image_path)
+
     # Checks
     def ensure_application_listed(self):
         xpath = "//span[@class=\"itemTitle\" and contains(text(), '{}')]"
         return self._ensure(xpath.format(self.app.title()))
-
-    # def subcategory_value(self, category_value):
-    #     self.open_console(self.session_sub_cat)
-    #     self.login(self.session_sub_cat)
-    #     self.session_sub_cat.visit("https://developer.amazon.com/category/" + category_value + "/list.json")
-    #     json_data = json.loads(self.session_sub_cat.source())
-    #     for value in json_data["data"]:
-    #         if value["name"] == self.app.subcategory():
-    #             return value["value"]
-    #     return ""
     
     def _ensure(self, xpath):
         return self.session.at_xpath(xpath, timeout=5)

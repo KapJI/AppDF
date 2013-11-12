@@ -330,3 +330,10 @@ class AppDF(object):
             result.append(self._get_path_and_extract(value))
         return result
 
+    def us_export_laws(self):
+        return hasattr(self.obj.application.consent, "us-export-laws") and self.obj.application.consent["us-export-laws"] == "yes"
+
+    def testing_instructions(self):
+        return self.obj.application["testing-instructions"]
+
+

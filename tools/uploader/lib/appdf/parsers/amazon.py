@@ -24,9 +24,9 @@ class Amazon(AppDF):
         with open(categories_file, "r") as fp:
             categories = json.load(fp)
             if subcategory == None:
-                amazon_category = self.replace(categories[type][category][""]["amazon"])
+                amazon_category = self._replace(categories[type][category][""]["amazon"])
             else:
-                amazon_category = self.replace(categories[type][category][subcategory]["amazon"])
+                amazon_category = self._replace(categories[type][category][subcategory]["amazon"])
                 
             return amazon_category.split("/")[0]
 
@@ -43,13 +43,13 @@ class Amazon(AppDF):
         with open(categories_file, "r") as fp:
             categories = json.load(fp)
             if subcategory == None:
-                amazon_category = self.replace(categories[type][category][""]["amazon"])
+                amazon_category = self._replace(categories[type][category][""]["amazon"])
             else:
-                amazon_category = self.replace(categories[type][category][subcategory]["amazon"])
+                amazon_category = self._replace(categories[type][category][subcategory]["amazon"])
             
         return amazon_category.split("/")[1] if len(amazon_category.split("/")) == 2 else ""
     
-    def replace(self, category):
+    def _replace(self, category):
         category = re.sub("(\s*/\s*)", "/", category)
         category = re.sub("^(\s*)", "", category)
         category = re.sub("(\s*)$", "", category)
@@ -87,12 +87,10 @@ class Amazon(AppDF):
         ]
     
     def free_app_of_day(self):
-        if hasattr(self.obj.application, "store-specific"):
-            if hasattr(self.obj.application["store-specific"], "amazon"):
+        if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):
                 if hasattr(self.obj.application["store-specific"]["amazon"], "free-app-of-the-day-eligibility"):
-                    amazon = self.obj.application["store-specific"]["amazon"]["free-app-of-the-day-eligibility"]
-                    return "true" if amazon == "yes" else "false"
-        return "false"
+                    return self.obj.application["store-specific"]["amazon"]["free-app-of-the-day-eligibility"] == "yes"
+        return False
         
     def content_desc(self):
         content = self.obj.application["content-description"]["content-descriptors"]
@@ -105,7 +103,8 @@ class Amazon(AppDF):
         intolerance = self.exchange(content["discrimination"])
         real_violance = self.exchange(content["realistic-violence"])
         sexual_content = self.exchange(content["sexual-content"])
-        nudity = sexual_content;
+        nudity = sexual_content
+        #TODO
         #bad-language
         #fear
         #gambling-reference
@@ -138,7 +137,7 @@ class Amazon(AppDF):
     def small_app_icon_path(self):
         app_icon_path = self.app_icon_path()
         img = Image.open(app_icon_path)
-        # Pretty PNG with transparency downsize
+        # Fancy downsize PNG with transparency
         premult = numpy.fromstring(img.tostring(), dtype=numpy.uint8)
         alpha_layer = premult[3::4] / 255.0
         premult[::4] *= alpha_layer
@@ -149,6 +148,33 @@ class Amazon(AppDF):
         img.resize((114, 114), Image.ANTIALIAS).save(path)
         return path
 
+    def binary_alias(self):
+        if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):
+            return self.obj.application["store-specific"]["amazon"]["binary-alias"]
+        return "binary"
 
-        
+    def apply_amazon_drm(self):
+        if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):
+            return self.obj.application["store-specific"]["amazon"]["apply-amazon-drm"] == "yes"
+        return False
+    
+    def kindle_fire_first_generation(self):
+        if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):
+            return self.obj.application["store-specific"]["amazon"]["kindle-support"]["kindle-fire-first-generation"] == "yes"
+        return False
+
+    def kindle_fire(self):
+        if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):
+            return self.obj.application["store-specific"]["amazon"]["kindle-support"]["kindle-fire"] == "yes"
+        return False
+
+    def kindle_fire_hd(self):
+        if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):
+            return self.obj.application["store-specific"]["amazon"]["kindle-support"]["kindle-fire-hd"] == "yes"
+        return False
+
+    def kindle_fire_hd_89(self):
+        if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):
+            return self.obj.application["store-specific"]["amazon"]["kindle-support"]["kindle-fire-hd-8-9"] == "yes"
+        return False
         

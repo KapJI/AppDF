@@ -46,7 +46,3 @@ class GooglePlay(AppDF):
 
     def google_android_content_guidelines(self):
         return hasattr(self.obj.application.consent, "google-android-content-guidelines") and self.obj.application.consent["google-android-content-guidelines"] == "yes"
-
-    def us_export_laws(self):
-        return hasattr(self.obj.application.consent, "us-export-laws") and self.obj.application.consent["us-export-laws"] == "yes"
-

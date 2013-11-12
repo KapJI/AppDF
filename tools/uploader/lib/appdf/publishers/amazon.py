@@ -50,12 +50,11 @@ class Amazon(object):
         else:
             self.create_application()
         self.fill_general_information()
-        #self.fill_availability()
-        #self.fill_description()
-        #self.fill_content_rating()
-        
+        self.fill_availability()
+        self.fill_description()
+        self.fill_content_rating()
         self.fill_images_multimedia()
-        #self.fill_binary_files()
+        self.fill_binary_files()
             
         
     # Actions
@@ -68,7 +67,7 @@ class Amazon(object):
         self.session.at_xpath(xpath).click()
         
         email_field = self.session.at_css("#ap_email")
-        #radio_button
+        # radio_button
         self.session.at_css("#ap_signin_existing_radio").click()
         password_field = self.session.at_css("#ap_password")
         submit_button = self.session.at_css("#signInSubmit-input")
@@ -116,7 +115,7 @@ class Amazon(object):
             self.app.privacy_policy_link()
         ])
         
-        #category selection
+        # Category selection
         xpath = "//select[@id=\"parentCategoryList\"]/option[contains(text(), \"{}\")]"
         xpath = xpath.format(self.app.category())
         category_value = self.session.at_xpath(xpath).value()
@@ -128,10 +127,9 @@ class Amazon(object):
             category_value
         ])
         
-        #subcategory selection
+        # Subcategory selection
         if self.app.subcategory() != "":
-            print 'Subcategory:', self.app.subcategory()
-            #subcategory_value = self.subcategory_value(category_value)
+            #print 'Subcategory:', self.app.subcategory()
             xpath = "//select[@id=\"childCategoryList\"]/option[contains(text(), \"{}\")]"
             xpath = xpath.format(self.app.subcategory())
             subcategory_value = self.session.at_xpath(xpath).get_attr("value")
@@ -160,18 +158,18 @@ class Amazon(object):
         if self.session.at_xpath(xpath):
             self._ensure(xpath).click();
         
-        #countries
+        # Countries
         if self.app.availability_type() == "include":
             self.session.at_xpath("//input[@id=\"availableWorldWide2\"]").click()
             
-            #remove selection
+            # Remove selection
             for selection in ["AF", "AN", "AS", "EU", "NA", "OC", "SA"]:
                 length = len(str(self.session.at_xpath("//span[@id=\"selected-countries\"]").text()))
                 self.session.at_xpath("//div[@id=\"" + selection + "\"]/label[1]/input").click()
                 if length < len(str(self.session.at_xpath("//span[@id=\"selected-countries\"]").text())):
                     self.session.at_xpath("//div[@id=\"" + selection + "\"]/label[1]/input").click()
                 
-            #only listed
+            # Only listed
             for country in self.app.countries_list():
                 country = country.encode("utf-8")
                 if self.session.at_xpath("//input[@id=\"" + country + "\"]"):
@@ -180,14 +178,14 @@ class Amazon(object):
         elif self.app.availability_type() == "exclude":
             self.session.at_xpath("//input[@id=\"availableWorldWide2\"]").click()
             
-            #set selection
+            # Set selection
             for selection in ["AF", "AN", "AS", "EU", "NA", "OC", "SA"]:
                 length = len(str(self.session.at_xpath("//span[@id=\"selected-countries\"]").text()))
                 self.session.at_xpath("//div[@id=\"" + selection + "\"]/label[1]/input").click()
                 if length > len(str(self.session.at_xpath("//span[@id=\"selected-countries\"]").text())):
                     self.session.at_xpath("//div[@id=\"" + selection + "\"]/label[1]/input").click()
             
-            #all except
+            # All except
             for country in self.app.availability_countries():
                 country = country.encode("utf-8")
                 if self.session.at_xpath("//input[@id=\"" + country + "\"]"):
@@ -196,7 +194,7 @@ class Amazon(object):
         else:
             self.session.at_xpath("//input[@id=\"availableWorldWide1\"]").click()
             
-        #prices
+        # Prices
         if self.app.paid():
             self.session.at_xpath("//input[@id=\"charging-no-free-app\"]").click()
         else:
@@ -221,7 +219,7 @@ class Amazon(object):
                     price
                 ])
         
-        #period
+        # Period
         if self.app.period_since() != None:
             fill([
                 self.session.at_xpath("//input[@id=\"availabilityDate\"]")
@@ -229,7 +227,7 @@ class Amazon(object):
                 self.app.period_since()
             ])
         
-        #free app of day
+        # Free app of day
         fill([
             self.session.at_xpath("//input[@id=\"fad\"]")
         ], [
@@ -309,31 +307,31 @@ class Amazon(object):
         # Small application icon
         small_icon_path = self.app.small_app_icon_path()
         xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[1]/td[2]/div"
-        self.delete_image(self.session.at_xpath(xpath))
-        self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), small_icon_path)
+        self.delete_file(self.session.at_xpath(xpath))
+        self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), small_icon_path)
 
         # Application icon
         app_icon_path = self.app.app_icon_path()
         xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[2]/td[2]/div"
-        self.delete_image(self.session.at_xpath(xpath))
-        self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), app_icon_path)
+        self.delete_file(self.session.at_xpath(xpath))
+        self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), app_icon_path)
 
         # Delete old screenshot
         xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[3]/td[2]"
-        while self.delete_image(self.session.at_xpath(xpath)):
+        while self.delete_file(self.session.at_xpath(xpath)):
             pass
 
         self._debug("old_screenshots", "deleted")
         screenshots = self.app.screenshot_paths()
         for screenshot in screenshots:
             print "Uploaded:", os.path.basename(screenshot)
-            self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), screenshot)
+            self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), screenshot)
 
         large_promo_path = self.app.large_promo_path()
         if large_promo_path:
             xpath = "//*[@id='itemsection_multimedia']/div/fieldset/table/tbody/tr[4]/td[2]/div"
-            self.delete_image(self.session.at_xpath(xpath))
-            self.upload_image(self.session.at_xpath(xpath + "/div[@class='asset']"), large_promo_path)
+            self.delete_file(self.session.at_xpath(xpath))
+            self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), large_promo_path)
 
         self._debug("images_multimedia", "filled")
         
@@ -393,26 +391,67 @@ class Amazon(object):
         xpath = "//a[@id=\"edit_button\"]"
         if self.session.at_xpath(xpath):
             self._ensure(xpath).click();
+        self._debug("binary_files", "opened")
         
+        # Upload APK
+        apk_path = self.app.apk_paths()[0]
+        xpath = "//*[@id='itemsection_binary']/div/fieldset/table/tbody/tr[2]/td[2]/div"
+        self.delete_file(self.session.at_xpath(xpath))
+        self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), apk_path)
+
+        # Apply Amazon DRM
+        if self.app.apply_amazon_drm():
+            self.session.at_xpath("//*[@id='applyAmazonDRM1']").click()
+        else:
+            self.session.at_xpath("//*[@id='applyAmazonDRM2']").click()
+
+        # Language support
+        # Uncheck all
+        lang_checkboxes = self.session.xpath("//*[@id='supportedLanguages']/label/input[@type='checkbox']")
+        for checkbox in lang_checkboxes:
+            checkbox.set("false")
+        self.session.at_xpath("//*[@id='English']").set("true")
+        # TODO: implement this
+        # if hasattr(self.app.obj.application, "description-localization"):
+        #     language_json = self.app.language()
+        #     for desc in self.app.obj.application["description-localization"]:
+        #         language = desc.attrib["language"]
+        #         if language in language_json:
         
+        # Device support
+        self.session.at_xpath("//*[@id='selectedCollectableMetaData.allNonAmazonDevicesSupported1']").set("true")
+        self.session.at_xpath("//*[@id='MGVY776RM7ZQ0']").set("true" if self.app.kindle_fire_first_generation() else "false")
+        self.session.at_xpath("//*[@id='M9C112PAOVM7I']").set("true" if self.app.kindle_fire() else "false")
+        self.session.at_xpath("//*[@id='M3U9QPRY5HG6KY']").set("true" if self.app.kindle_fire_hd() else "false")
+        self.session.at_xpath("//*[@id='M29F7OKPA4P35O']").set("true" if self.app.kindle_fire_hd_89() else "false")
+
+        # Export Compliance
+        self.session.at_xpath("//*[@id='isExportCompliance']").set("true" if self.app.us_export_laws() else "false")
+
+        # Binary alias
+        self.session.at_xpath("//*[@id='nickName']").set(self.app.binary_alias())
+
+        # Testing instructions
+        self.session.at_xpath("//*[@id='instructions']").set(self.app.testing_instructions())
+
         self._debug("binary_files", "filled")
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
-        self._debug("binary_files", "save")
+        self._debug("binary_files", "saved")
         self.error_check()
     
-    def delete_image(self, image_div):
-        delete_button = image_div.at_xpath("div/div/a[contains(@class, 'remove')]")
+    def delete_file(self, file_div):
+        delete_button = file_div.at_xpath("div/div/a[contains(@class, 'remove')]")
         if delete_button:
             delete_button.click()
             self.session.at_xpath("//input[@id='floatingconfirm-ok']").click()
             return True
         return False
 
-    def upload_image(self, image_div, image_path):
-        image_div.set_attr("class", "")
-        image_div.at_xpath("div/input").set(image_path)
+    def upload_file(self, file_div, file_path):
+        file_div.set_attr("class", "")
+        file_div.at_xpath("div/input").set(file_path)
 
     # Checks
     def ensure_application_listed(self):
@@ -433,8 +472,6 @@ class Amazon(object):
     # Helpers
     def _debug(self, action, state):
         print action + " : " + state
-        #file_name = "{}-{}-{}.png".format(time.time(), action, state)
-        #self.session.render(file_name)
         
         if self.debug_dir:
             file_name = "{}-{}-{}.png".format(time.time(), action, state)

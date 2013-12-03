@@ -385,7 +385,7 @@ class Amazon(object):
         
         # Upload APK
         apk_path = self.app.apk_paths()[0]
-        xpath = "//*[@id='itemsection_binary']/div/fieldset/table/tbody/tr[2]/td[2]/div"
+        xpath = "//*[@id='itemsection_binary']/div/fieldset/table/tbody/tr[4]/td[2]/div"
         self.delete_file(self.session.at_xpath(xpath))
         self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), apk_path)
 
@@ -419,7 +419,8 @@ class Amazon(object):
         self.session.at_xpath("//*[@id='isExportCompliance']").set("true" if self.app.us_export_laws() else "false")
 
         # Binary alias
-        self.session.at_xpath("//*[@id='nickName']").set(self.app.binary_alias())
+        binary_alias = self.app.binary_alias().text.replace(" ", "_")
+        self.session.at_xpath("//*[@id='nickName']").set(binary_alias)
 
         # Testing instructions
         self.session.at_xpath("//*[@id='instructions']").set(self.app.testing_instructions())

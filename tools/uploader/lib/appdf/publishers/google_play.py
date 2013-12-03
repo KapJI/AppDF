@@ -50,12 +50,7 @@ class GooglePlay(object):
 
         # Select All applications menu
         xpath = "//sidebar/nav/ul/li/a/div"
-        all_appications_button = self.session.at_xpath(xpath)
-        if all_appications_button:
-            all_appications_button.click()
-        else:
-            print "Login error"
-            sys.exit(1)
+        self.session.at_xpath(xpath).click()
         
         if self.ensure_application_listed():
             self.open_app()
@@ -141,6 +136,9 @@ class GooglePlay(object):
             
             email_field.form().submit()
             self._debug("login", "submited")
+            if self.session.url().startswith(login_url):
+                print "Login error"
+                sys.exit(1)
 
     def open_app(self):
         xpath = "//section/div/table/tbody/tr/td/div/a/span[contains(text(), '{}')]"
@@ -291,11 +289,9 @@ class GooglePlay(object):
             self.upload_file(self.session.xpath(xpath)[-1].at_xpath("div[1]/input"), screenshots[0])
 
             for screenshot in screenshots:
-                print "Uploaded:", os.path.basename(screenshot)
                 for i in xrange(IMAGE_LOAD_ATTEMPTS):
                     if self.upload_image(self.session.xpath(xpath)[-1], screenshot):
                         break
-            self._debug("upload_screenshots", "finished")
 
             # Upload app icon
             app_icon_path = self.app.app_icon_path()
@@ -420,6 +416,7 @@ class GooglePlay(object):
         if image_div.at_xpath("div[4]").get_attr("aria-hidden") != "true":
             image_div.at_xpath("div[4]/div[2]").click()
             return False
+        print "Uploaded:", os.path.basename(image_path)
         return True
 
     # Helpers

@@ -175,7 +175,7 @@ class GooglePlay(object):
     
     def remove_languages(self):
         # 'Manage translations' button
-        xpath = "//section/div/div/div/div/div/div[3]/button[@aria-hidden='false']"
+        xpath = "//section/div/div/div/div/div/div[3]/button[not(@aria-hidden='true')]"
         if self.session.at_xpath(xpath):
             self.session.at_xpath(xpath).click()
             # 'Remove translations' item
@@ -284,7 +284,7 @@ class GooglePlay(object):
             old_screenshots = self.session.xpath(xpath)
             self._debug("screenshots", "start")
             for old in old_screenshots:
-                if old.at_xpath("div[3]").get_attr("aria-hidden") == "false":
+                if old.at_xpath("div[3]").get_attr("aria-hidden") != "true":
                     old.at_xpath("div[3]/div[2]").click()
             self._debug("screenshots", "old deleted")
             screenshots = self.app.screenshot_paths()
@@ -414,11 +414,11 @@ class GooglePlay(object):
     def upload_image(self, image_div, image_path):
         # Delete old image if needed
         if image_div.at_xpath("div[1]").get_attr("aria-hidden") == "true":
-            image_div.at_xpath("div[@aria-hidden='false']/div[2]").click()
+            image_div.at_xpath("div[not(@aria-hidden='true')]/div[2]").click()
 
         self.upload_file(image_div.at_xpath("div[1]/input"), image_path)
         self.session.wait_for(lambda: image_div.at_xpath("div[2]").get_attr("aria-hidden") == "true", timeout=60)
-        if image_div.at_xpath("div[4]").get_attr("aria-hidden") == "false":
+        if image_div.at_xpath("div[4]").get_attr("aria-hidden") != "true":
             image_div.at_xpath("div[4]/div[2]").click()
             return False
         return True

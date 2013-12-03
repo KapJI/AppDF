@@ -74,7 +74,6 @@ class Amazon(object):
 
         email_field.set(self.username)
         password_field.set(self.password)
-        self._debug("login", "filled")
         
         email_field.form().submit()
         self._debug("login", "submited")
@@ -142,8 +141,6 @@ class Amazon(object):
                     subcategory_value
                 ])
             
-        self._debug("general_info", "filled")
-        
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
         self._debug("general_info", "saved")
@@ -234,8 +231,6 @@ class Amazon(object):
             self.app.free_app_of_day()
         ])
         
-        self._debug("fill_availability", "filled")
-        
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
         self._debug("fill_availability", "saved")
@@ -324,7 +319,6 @@ class Amazon(object):
         self._debug("old_screenshots", "deleted")
         screenshots = self.app.screenshot_paths()
         for screenshot in screenshots:
-            print "Uploaded:", os.path.basename(screenshot)
             self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), screenshot)
 
         large_promo_path = self.app.large_promo_path()
@@ -333,8 +327,6 @@ class Amazon(object):
             self.delete_file(self.session.at_xpath(xpath))
             self.upload_file(self.session.at_xpath(xpath + "/div[@class='asset']"), large_promo_path)
 
-        self._debug("images_multimedia", "filled")
-        
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
         self._debug("images_multimedia", "saved")
@@ -375,8 +367,6 @@ class Amazon(object):
         ], 
             self.app.include_content()
         )
-        
-        self._debug("content_rating", "filled")
         
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
@@ -434,8 +424,6 @@ class Amazon(object):
         # Testing instructions
         self.session.at_xpath("//*[@id='instructions']").set(self.app.testing_instructions())
 
-        self._debug("binary_files", "filled")
-        
         xpath = "//input[@id=\"submit_button\"]"
         self.session.at_xpath(xpath).click();
         self._debug("binary_files", "saved")
@@ -452,6 +440,7 @@ class Amazon(object):
     def upload_file(self, file_div, file_path):
         file_div.set_attr("class", "")
         file_div.at_xpath("div/input").set(file_path)
+        print "Uploaded:", os.path.basename(file_path)
 
     # Checks
     def ensure_application_listed(self):

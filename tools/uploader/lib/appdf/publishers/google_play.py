@@ -32,8 +32,7 @@ class GooglePlay(object):
         self.debug_dir = debug_dir
 
         self.session = webkit_server.Client()
-        self.session.set_header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.69 Safari/537.36")
-
+  
         if self.debug_dir:
             if not os.path.exists(self.debug_dir):
                 os.mkdir(self.debug_dir)

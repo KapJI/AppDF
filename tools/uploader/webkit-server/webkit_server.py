@@ -314,6 +314,7 @@ class Client(WaitMixin):
         super(Client, self).__init__()
         self.conn = connection or ServerConnection()
         self._node_factory = node_factory_class(self)
+        self.set_header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.57 Safari/537.36")
 
     def visit(self, url):
         """ Goes to a given URL. """

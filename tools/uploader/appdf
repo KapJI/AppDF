@@ -48,11 +48,11 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # args.password = None
-    # if sys.stdin.isatty():
-    #     args.password = getpass.getpass() 
-    # else:
-    #     args.password = sys.stdin.readline()
+    if not args.password:
+        if sys.stdin.isatty():
+            args.password = getpass.getpass() 
+        else:
+            args.password = sys.stdin.readline()
     
     #validate url
     regexp = re.compile('^((https?|ftp)://|(www|ftp)\.)[a-z0-9-]+(\.[a-z0-9-]+)+([/?].*)?$', re.IGNORECASE)

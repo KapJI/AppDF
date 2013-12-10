@@ -57,9 +57,9 @@ class GooglePlay(object):
         else:
             self.create_app()
 
-        self.fill_store_listing()
+        #self.fill_store_listing()
         self.upload_apk()
-        self.fill_pricing_and_distribution()
+        #self.fill_pricing_and_distribution()
 
         self.restore_locale()
 
@@ -395,9 +395,8 @@ class GooglePlay(object):
         apk_list = self.app.apk_paths()
         self.upload_file(input_file, apk_list[0])
         # 'div' with progress bar
-        xpath = "/html/body/div[6]/div/div/div[1]/div[2]"
-        progress_bar = self.session.at_xpath(xpath)
-        self.session.wait_for(lambda: progress_bar.get_attr("aria-hidden") == "true", timeout=120)
+        self.session.wait_for(self.apk_loading_check, interval=0.1, timeout=120)
+        print "\rUpload APK: done!", " " * 10
         # 'div' with warnings
         xpath = "/html/body/div[6]/div/div/div[1]/div[4]"
         warnings_block = self.session.at_xpath(xpath)
@@ -409,7 +408,7 @@ class GooglePlay(object):
         xpath = "/html/body/div[6]/div/div/div[1]/div[3]"
         errors_block = self.session.at_xpath(xpath)
         if errors_block.get_attr("aria-hidden") != "true":
-            print "\nUpload APK:", errors_block.at_xpath("h4").text()
+            print "\nUploading APK:", errors_block.at_xpath("h4").text()
             for error in errors_block.xpath("div/p"):
                 print "*", error.text()
             sys.exit(1)
@@ -420,6 +419,15 @@ class GooglePlay(object):
             save_button.click()
         self._debug("upload_apk", "finished")
     
+    def apk_loading_check(self):
+        xpath = "/html/body/div[6]/div/div/div[1]/div[2]"
+        progress_bar = self.session.at_xpath(xpath)
+        xpath = "/html/body/div[6]/div/div/div[1]/div[2]/div[2]/div[1]/span"
+        percent = self.session.at_xpath(xpath).text().split()[0]
+        print "\rUploading APK: ", percent,
+        sys.stdout.flush()
+        return progress_bar.get_attr("aria-hidden") == "true"
+
     def upload_file(self, file_input, file_path):
         file_input.set_attr("style", "position: absolute")
         file_input.set(file_path)

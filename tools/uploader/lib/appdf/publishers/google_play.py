@@ -46,8 +46,6 @@ class GooglePlay(object):
 
         self.login()
         
-        #assert bool(self.ensure_all_applications_header())
-
         # Select All applications menu
         xpath = "//sidebar/nav/ul/li/a/div"
         self.session.at_xpath(xpath).click()
@@ -57,9 +55,9 @@ class GooglePlay(object):
         else:
             self.create_app()
 
-        #self.fill_store_listing()
+        self.fill_store_listing()
         self.upload_apk()
-        #self.fill_pricing_and_distribution()
+        self.fill_pricing_and_distribution()
 
         self.restore_locale()
 

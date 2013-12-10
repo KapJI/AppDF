@@ -394,7 +394,7 @@ class GooglePlay(object):
         self.upload_file(input_file, apk_list[0])
         # 'div' with progress bar
         self.session.wait_for(self.apk_loading_check, interval=0.1, timeout=120)
-        print "\rUpload APK: done!", " " * 10
+        print "\rUpload APK: done!", " " * 15
         # 'div' with warnings
         xpath = "/html/body/div[6]/div/div/div[1]/div[4]"
         warnings_block = self.session.at_xpath(xpath)

@@ -56,7 +56,7 @@ class Amazon(object):
         self.fill_images_multimedia()
         self.fill_binary_files()
             
-        
+    
     # Actions
     def open_console(self):
         self.session.visit("https://developer.amazon.com/welcome.html")
@@ -167,7 +167,7 @@ class Amazon(object):
                     self.session.at_xpath("//div[@id=\"" + selection + "\"]/label[1]/input").click()
                 
             # Only listed
-            for country in self.app.countries_list():
+            for country in self.app.availability_countries():
                 country = country.encode("utf-8")
                 if self.session.at_xpath("//input[@id=\"" + country + "\"]"):
                     self.session.at_xpath("//input[@id=\"" + country + "\"]").click()
@@ -193,8 +193,6 @@ class Amazon(object):
             
         # Prices
         if self.app.paid():
-            self.session.at_xpath("//input[@id=\"charging-no-free-app\"]").click()
-        else:
             self.session.at_xpath("//input[@id=\"charging-yes\"]").click()
             fill([
                 self.session.at_xpath("//select[@id=\"base_currency\"]"),
@@ -215,6 +213,8 @@ class Amazon(object):
                 ],[
                     price
                 ])
+        else:
+            self.session.at_xpath("//input[@id=\"charging-no-free-app\"]").click()
         
         # Period
         if self.app.period_since() != None:

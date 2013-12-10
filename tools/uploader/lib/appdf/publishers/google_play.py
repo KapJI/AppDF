@@ -82,7 +82,6 @@ class GooglePlay(object):
 
     def ensure_saved_message(self):
         xpath = "//*[normalize-space(text()) = 'Saved']"
-        #xpath = "//div[@data-notification-type='INFO' and @aria-hidden='false']"
         return self._ensure(xpath)
 
     def ensure_add_language_header(self):
@@ -101,11 +100,11 @@ class GooglePlay(object):
     def store_locale(self):
         self.open_account()
         self.login()
-        #store current language
-        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[2]/div/div/div[3]/div[2]/div/div[1]/div[1]"
+        # Store current language
+        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[3]/div/div/div[3]/div[2]/div/div[1]/div[1]"
         self.locale = self.session.at_xpath(xpath).text()
         
-        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[2]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
+        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[3]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
         self.session.at_xpath(xpath).click()
         
         xpath = "//div[@role=\"dialog\"]/div[2]/div/div/div/span[contains(text(), \"English (United States)\")]"
@@ -115,8 +114,8 @@ class GooglePlay(object):
     def restore_locale(self):
         self.open_account()
         self.login()
-        #restore previous language
-        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[2]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
+        # Restore previous language
+        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[3]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
         self.session.at_xpath(xpath).click()
         
         xpath = "//div[@role=\"dialog\"]/div[2]/div/div/div[count(span[contains(text(), \"{}\")])=1]".format(self.locale)
@@ -153,7 +152,7 @@ class GooglePlay(object):
         # self.session.at_xpath(xpath).click()
         xpath = "//body/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/h2/button[position()=1]"
         self.session.at_xpath(xpath).click()
-        self._debug("create_app", "popup_opened")
+        self._debug("create_app", "popup opened")
 
         self.session.at_css("div.popupContent input").set(self.app.title())
         self._debug("create_app", "filled")
@@ -181,10 +180,10 @@ class GooglePlay(object):
             buttons = self.session.xpath("//section/div[3]/div[2]/div/div/div/div/button[not(@disabled) and @data-lang-code and @aria-pressed='false']")
             for button in buttons:
                 button.click()
-            self._debug("remove_languages", "all selected")
             # 'Remove' button
             xpath = "//section/div[3]/div[2]/div/div/div[2]/button[2]"
             self.session.at_xpath(xpath).click()
+            self._debug("remove_languages", "old removed")
 
 
     def add_languages(self):
@@ -380,26 +379,45 @@ class GooglePlay(object):
         self.session.at_xpath(xpath).click()
         self.ensure_application_header()
         
+        # 'Upload new APK to production' button
         xpath = "//section/div/div/div/div/div/div/div/button"
         button = self.session.at_xpath(xpath)
         if not button or not button.is_visible():
+            # Button if APK is already exist
             xpath = "//section/div[2]/div/div/div[2]/h3/button"
             button = self.session.at_xpath(xpath)
         button.click()
         self.ensure_application_header()
         
+        # 'input' for APK upload
         xpath = "//div[@class='gwt-PopupPanel']/div[@class='popupContent']/div/div/div/input"
         input_file = self.session.at_xpath(xpath)
         apk_list = self.app.apk_paths()
         self.upload_file(input_file, apk_list[0])
+        # 'div' with progress bar
         xpath = "/html/body/div[6]/div/div/div[1]/div[2]"
         progress_bar = self.session.at_xpath(xpath)
         self.session.wait_for(lambda: progress_bar.get_attr("aria-hidden") == "true", timeout=120)
+        # 'div' with warnings
+        xpath = "/html/body/div[6]/div/div/div[1]/div[4]"
+        warnings_block = self.session.at_xpath(xpath)
+        if warnings_block.get_attr("aria-hidden") != "true":
+            print "\nUpload APK:", warnings_block.at_xpath("h4").text()
+            for warning in warnings_block.xpath("div/p"):
+                print "*", warning.text()
+        # 'div' with errors
+        xpath = "/html/body/div[6]/div/div/div[1]/div[3]"
+        errors_block = self.session.at_xpath(xpath)
+        if errors_block.get_attr("aria-hidden") != "true":
+            print "\nUpload APK:", errors_block.at_xpath("h4").text()
+            for error in errors_block.xpath("div/p"):
+                print "*", error.text()
+            sys.exit(1)
+        # 'Save' button
         xpath = "/html/body/div[6]/div/div/nav/span/div/button[1]"
         save_button = self.session.at_xpath(xpath)
         if save_button and save_button.is_visible():
             save_button.click()
-        time.sleep(1)
         self._debug("upload_apk", "finished")
     
     def upload_file(self, file_input, file_path):

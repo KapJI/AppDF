@@ -1,10 +1,13 @@
-all: requirements webkit-server #samples
+all: requirements webkit_server image_resizer #samples
 
 requirements:
 	pip install -r requirements.txt
 
-webkit-server:
-	cd webkit-server && python setup.py install
+webkit_server:
+	cd webkit-server && python setup.py install && cd ..
+
+image_resizer:
+	cd image-resizer && python setup.py install && cd ..
 
 #samples:
 #	wget https://github.com/onepf/AppDF/archive/master.tar.gz

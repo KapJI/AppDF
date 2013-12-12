@@ -3,8 +3,7 @@ from __future__ import absolute_import
 import os
 import json
 import re
-import numpy
-from PIL import Image
+import image_resizer
 from appdf.parsers import AppDF
 
 
@@ -136,17 +135,9 @@ class Amazon(AppDF):
 
     def small_app_icon_path(self):
         app_icon_path = self.app_icon_path()
-        img = Image.open(app_icon_path)
-        # Fancy downsize PNG with transparency
-        premult = numpy.fromstring(img.tostring(), dtype=numpy.uint8)
-        alpha_layer = premult[3::4] / 255.0
-        premult[::4] *= alpha_layer
-        premult[1::4] *= alpha_layer
-        premult[2::4] *= alpha_layer
-        img = Image.fromstring("RGBA", img.size, premult.tostring())
-        path = os.path.join(os.path.dirname(app_icon_path), "small_icon.png")
-        img.resize((114, 114), Image.ANTIALIAS).save(path)
-        return path
+        small_icon_path = os.path.join(os.path.dirname(app_icon_path), "small_icon.png")
+        image_resizer.resize(app_icon_path, small_icon_path, 114, 114)
+        return small_icon_path
 
     def binary_alias(self):
         if hasattr(self.obj.application, "store-specific") and hasattr(self.obj.application["store-specific"], "amazon"):

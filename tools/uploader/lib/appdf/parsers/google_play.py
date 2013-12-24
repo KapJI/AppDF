@@ -42,7 +42,15 @@ class GooglePlay(AppDF):
         return self._availability_countries("google_countries.json")
 
     def local_prices(self):
-        return self._local_prices("google_countries.json")
+        prices = super(GooglePlay, self).local_prices()
+
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        countries_file = os.path.join(current_dir, "..", "..", "..", "spec", "google_countries.json")
+        with open(countries_file, "r") as fp:
+            countries_json = json.load(fp)
+            for price in prices:
+                price[0] = countries_json[price[0]]
+        return prices
 
     def google_android_content_guidelines(self):
         return hasattr(self.obj.application.consent, "google-android-content-guidelines") and self.obj.application.consent["google-android-content-guidelines"] == "yes"

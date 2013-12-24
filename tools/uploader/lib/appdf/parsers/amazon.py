@@ -56,8 +56,7 @@ class Amazon(AppDF):
     
     def language(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
-        languages_file = os.path.join(current_dir, "..", "..", "..", "spec",
-                                       "amazon_language.json")
+        languages_file = os.path.join(current_dir, "..", "..", "..", "spec", "amazon_language.json")
         with open(languages_file, "r") as fp:
             return json.load(fp)
     
@@ -70,9 +69,6 @@ class Amazon(AppDF):
   
     def availability_countries(self):
         return self._availability_countries("amazon_countries.json")
-
-    def local_prices(self):
-        return self._local_prices("amazon_countries.json")
 
     def include_content(self):
         content_inc = self.obj.application["content-description"]["included-activities"]

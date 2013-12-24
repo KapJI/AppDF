@@ -212,18 +212,10 @@ class AppDF(object):
         return self.obj.application.price["base-price"]
     
     def local_prices(self):
-        return self._local_prices("countries.json")
-
-    def _local_prices(self, filename):
         result = []
         if hasattr(self.obj.application.price, "local-price"):
-            current_dir = os.path.dirname(os.path.realpath(__file__))
-            countries_file = os.path.join(current_dir, "..", "..", "..", "spec", filename)
-            
-            with open(countries_file, "r") as fp:
-                countries_json = json.load(fp)
-                for local_price in self.obj.application.price["local-price"]:
-                    result.append([countries_json[local_price.attrib["country"]], str(local_price)])
+            for local_price in self.obj.application.price["local-price"]:
+                result.append([local_price.attrib["country"], str(local_price)])
         return result
     
     def availability_type(self):

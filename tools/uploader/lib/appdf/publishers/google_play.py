@@ -6,6 +6,7 @@ import sys
 import webkit_server
 
 IMAGE_LOAD_ATTEMPTS = 5
+TAB_LOAD_ATTEMPTS = 3
 
 def fill_element(element, value):
     if value:
@@ -39,7 +40,7 @@ class GooglePlay(object):
 
     # Publication process
     def publish(self):
-        self.store_locale()
+        self.store_locale(TAB_LOAD_ATTEMPTS)
 
         self.session.visit("https://play.google.com/apps/publish/v2/")
         self._debug("developer_console", "opened")
@@ -59,23 +60,15 @@ class GooglePlay(object):
         self.upload_apk()
         self.fill_pricing_and_distribution()
 
-        self.restore_locale()
+        self.restore_locale(TAB_LOAD_ATTEMPTS)
 
     # Checks
-    def ensure_all_applications_header(self):
-        xpath = "//h2[normalize-space(text()) = 'All applications']"
-        return self._ensure(xpath)
-
     def ensure_application_listed(self):
         xpath = "//section/div/table/tbody/tr/td/div/a/span[contains(text(), '{}')]"
         return self._ensure(xpath.format(self.app.title()))
 
     def ensure_application_header(self):
         xpath = "//h2/span[contains(text(), '{}')]".format(self.app.title())
-        return self._ensure(xpath)
-
-    def ensure_store_listing_header(self):
-        xpath = "//h3[contains(text(), 'Store Listing')]"
         return self._ensure(xpath)
 
     def ensure_saved_message(self):
@@ -95,29 +88,67 @@ class GooglePlay(object):
         self.session.visit("https://accounts.google.com/ServiceLogin")
         self._debug("account_settings", "opened")
 
-    def store_locale(self):
+    def store_locale(self, attempts):
         self.open_account()
         self.login()
+        
+        # Language tab
+        lang_tab = self.session.at_xpath('//*[@id="nav-language"]')
+        # Prevent loading stuck
+        time.sleep(1)
+        lang_tab.left_click()
+        
         # Store current language
-        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[3]/div/div/div[3]/div[2]/div/div[1]/div[1]"
-        self.locale = self.session.at_xpath(xpath).text()
-        
-        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[3]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
-        self.session.at_xpath(xpath).click()
-        
-        xpath = "//div[@role=\"dialog\"]/div[2]/div/div/div/span[contains(text(), \"English (United States)\")]"
-        self.session.at_xpath(xpath).click()
+        xpath = "/html/body/div[1]/div[4]/div/div/div[1]/div/div[2]/div[1]/div[2]/div"
+        locale_button = self.session.at_xpath(xpath)
+        if locale_button == None:
+            if attempts == 1:
+                print "Can't open 'Language' tab. Aborting."
+                sys.exit(1)
+            print "Tab loading stuck. Try again..."
+            self.store_locale(attempts - 1)
+            return
+        self.locale = locale_button.text().strip()
+        locale_button.left_click()
+
+        # Search input
+        xpath = "/html/body/div[8]/div[2]/div[1]/div[3]/input"
+        self.session.at_xpath(xpath).set("English (United States)")
+
+        # Select 'English (United States)'
+        xpath = "/html/body/div[8]/div[2]/div[2]/div/div[2]/div[1]/div/div/div/span[2][contains(text(), \"English (United States)\")]"
+        self.session.at_xpath(xpath).left_click()
         self._debug("locale", "changed")
         
-    def restore_locale(self):
+    def restore_locale(self, attempts):
         self.open_account()
         self.login()
-        # Restore previous language
-        xpath = "//body/div[4]/div[2]/div[1]/div[1]/div/div/div/div[1]/div/div[3]/div/div/div[3]/div[2]/div/div[1]/div[2]/a"
-        self.session.at_xpath(xpath).click()
         
-        xpath = "//div[@role=\"dialog\"]/div[2]/div/div/div[count(span[contains(text(), \"{}\")])=1]".format(self.locale)
-        self.session.at_xpath(xpath).click()
+        # Language tab
+        lang_tab = self.session.at_xpath('//*[@id="nav-language"]')
+        # Prevent loading stuck
+        time.sleep(1)
+        lang_tab.left_click()
+        
+        # Restore previous language
+        xpath = "/html/body/div[1]/div[4]/div/div/div[1]/div/div[2]/div[1]/div[2]/div"
+        locale_button = self.session.at_xpath(xpath)
+        if locale_button == None:
+            if attempts == 1:
+                print "Can't open 'Language' tab. Aborting."
+                sys.exit(1)
+            print "Tab loading stuck. Try again..."
+            self.restore_locale(attempts - 1)
+            return
+        locale_button.left_click()
+        
+        # Search input
+        xpath = "/html/body/div[8]/div[2]/div[1]/div[3]/input"
+        self.session.at_xpath(xpath).set(self.locale)
+        
+        # Select old locale
+        xpath = "/html/body/div[8]/div[2]/div[2]/div/div[2]/div[1]/div/div/div/span[2][contains(text(), \"{}\")]".format(self.locale)
+        self.session.at_xpath(xpath).left_click()
         self._debug("locale", "restored")
 
     def login(self):
@@ -146,8 +177,6 @@ class GooglePlay(object):
         
 
     def create_app(self):
-        # xpath = "//*[normalize-space(text()) = 'Add new application']"
-        # self.session.at_xpath(xpath).click()
         xpath = "//body/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/h2/button[position()=1]"
         self.session.at_xpath(xpath).click()
         self._debug("create_app", "popup opened")
@@ -158,8 +187,6 @@ class GooglePlay(object):
         self.session.at_css("div.popupContent select").set("en-US")
         self._debug("create_app", "default_language_set['en-US']")
         
-        # xpath = "//*[normalize-space(text()) = 'Prepare Store Listing']"
-        # self.session.at_xpath(xpath).click()
         xpath = "//div[@class='gwt-PopupPanel']/div[@class='popupContent']//footer/button[position()=2]"
         self.session.at_xpath(xpath).click()
         
@@ -245,7 +272,7 @@ class GooglePlay(object):
 
         assert len(inputs) == 7
         assert len(textareas) == 3
-        assert len(selects) == 3
+        assert len(selects) == 4
         fill(inputs, [
             self.app.title(lang),
             self.app.video(),
@@ -270,7 +297,7 @@ class GooglePlay(object):
             option = self.session.at_xpath(xpath)
             fill_element(selects[1], option.value())
 
-            fill_element(selects[2], self.app.rating())
+            fill_element(selects[3], self.app.rating())
         
             # Upload screenshots
             # Remove old screenshots first

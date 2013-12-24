@@ -189,7 +189,7 @@ Capybara = {
     var node = this.nodes[index];
     node.scrollIntoViewIfNeeded();
     var pos = this.clickPosition(node);
-    this.expectNodeAtPosition(node, pos);
+    //this.expectNodeAtPosition(node, pos);
     action(pos.absoluteX, pos.absoluteY);
   },
 

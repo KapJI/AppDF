@@ -208,11 +208,11 @@ class Amazon(object):
             for local_price in self.app.local_prices():
                 country = local_price[0]
                 price = local_price[1]
-                fill([
-                    self.session.at_xpath("//input[@id=\"" + currency[country] + "_" + country + "\"]")
-                ],[
-                    price
-                ])
+                if country in currency:
+                    fill_element(
+                        self.session.at_xpath("//input[@id=\"" + currency[country] + "_" + country + "\"]"),
+                        price
+                    )
         else:
             self.session.at_xpath("//input[@id=\"charging-no-free-app\"]").click()
         

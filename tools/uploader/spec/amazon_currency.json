@@ -6,5 +6,6 @@
     "IT" : "EUR",
     "JP" : "JPY",
     "CA" : "CAD",
-    "BR" : "BRL"
+    "BR" : "BRL",
+    "AU" : "AUD"
 }

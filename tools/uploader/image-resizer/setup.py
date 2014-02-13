@@ -19,20 +19,11 @@ class build_server(_build):
       return
     assert os.getcwd() == self.cwd, 'Must be in package root.'
     os.system('qmake && make')
-    try:
-      os.remove(os.path.join(self.build_purelib, 'image_resizer'))
-    except: pass      
-    try:
-      os.remove(os.path.join(self.build_platlib, 'image_resizer'))
-    except: pass
-    try:
-      os.makedirs(self.build_platlib)
-    except: pass
-    try:
-      os.makedirs(self.build_purelib)
-    except: pass
-    shutil.copy('image_resizer', self.build_purelib)
-    shutil.copy('image_resizer', self.build_platlib)
+
+if os.name == 'nt':
+  image_resizer_binary = 'release/image_resizer.exe'
+else:
+  image_resizer_binary = 'image_resizer'
 
 setup(name='image-resizer',
       version='0.1',
@@ -44,4 +35,6 @@ setup(name='image-resizer',
       py_modules=['image_resizer'],
       cmdclass={
         'build': build_server,
-        })
+      },
+      data_files=[('qtbin', [image_resizer_binary])],
+)

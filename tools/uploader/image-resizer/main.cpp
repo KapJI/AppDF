@@ -12,7 +12,7 @@ public slots:
         // Do processing here
         QStringList args = QCoreApplication::arguments();
         if (args.size() != 5) {
-            qCritical() << "usage: " << args.at(0).toStdString().c_str() << "IMAGE_PATH SAVE_PATH NEW_WIDTH NEW_HEIGHT";
+            qCritical() << "usage:" << args.at(0).toStdString().c_str() << "[image_path] [save_path] [new_width] [new_height]";
             emit finished();
             return;
         }

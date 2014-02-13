@@ -11,8 +11,7 @@ import json
 import time
 
 # path to the `webkit_server` executable
-SERVER_EXEC = os.path.abspath(os.path.join(os.path.dirname(__file__), 'webkit_server'))
-
+SERVER_EXEC = os.path.abspath(os.path.join(sys.prefix, 'qtbin', 'webkit_server'))
 
 class SelectionMixin(object):
     """ Implements a generic XPath selection for a class providing a

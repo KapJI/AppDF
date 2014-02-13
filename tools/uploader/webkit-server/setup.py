@@ -1,7 +1,6 @@
 from distutils.core import setup, Command
 from distutils.command.build import build as _build
 import os, sys
-import shutil
 
 class build_server(_build):
   description = 'custom build command'
@@ -19,20 +18,11 @@ class build_server(_build):
       return
     assert os.getcwd() == self.cwd, 'Must be in package root.'
     os.system('qmake && make')
-    try:
-      os.remove(os.path.join(self.build_purelib, 'webkit_server'))
-    except: pass      
-    try:
-      os.remove(os.path.join(self.build_platlib, 'webkit_server'))
-    except: pass
-    try:
-      os.makedirs(self.build_platlib)
-    except: pass
-    try:
-      os.makedirs(self.build_purelib)
-    except: pass
-    shutil.copy('src/webkit_server', self.build_purelib)
-    shutil.copy('src/webkit_server', self.build_platlib)
+
+if os.name == 'nt':
+  webkit_server_binary = 'src/release/webkit_server.exe'
+else:
+  webkit_server_binary = 'src/webkit_server'
 
 setup(name='webkit-server',
       version='0.8',
@@ -44,4 +34,6 @@ setup(name='webkit-server',
       py_modules=['webkit_server'],
       cmdclass={
         'build': build_server,
-        })
+      },
+      data_files=[('qtbin', [webkit_server_binary])],
+)

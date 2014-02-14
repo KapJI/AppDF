@@ -1,7 +1,6 @@
 from distutils.core import setup, Command
 from distutils.command.build import build as _build
 import os, sys
-import shutil
 
 class build_server(_build):
   description = 'custom build command'
